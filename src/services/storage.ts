@@ -21,6 +21,7 @@ import {
   INITIAL_AUDIT_LOGS,
   INITIAL_EMAIL_TEMPLATES,
 } from '../data/seedData';
+import { syncAppointmentToSupabase } from './supabaseClient';
 
 const KEYS = {
   USERS: 'oass_users_v1',
@@ -700,6 +701,20 @@ export const storage = {
       message: `Your file "${submissionData.fileName}" was received successfully for "${assignment.title}".`,
       type: 'submission',
       actionTab: 'my-submissions',
+    });
+
+    // Sync appointment/submission to Supabase
+    syncAppointmentToSupabase({
+      id: newSubmission.id,
+      studentId: student.id,
+      studentName: student.name,
+      assignmentId: assignment.id,
+      assignmentTitle: assignment.title,
+      courseCode: assignment.courseCode,
+      submittedAt: newSubmission.submittedAt,
+      status: newSubmission.status,
+      notes: newSubmission.comments || '',
+      fileUrl: newSubmission.fileName || '',
     });
 
     return newSubmission;
