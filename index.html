@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      (function() {
+        try {
+          var currentFetch = window.fetch ? window.fetch.bind(window) : undefined;
+          try {
+            Object.defineProperty(window, 'fetch', {
+              get: function() {
+                return currentFetch;
+              },
+              set: function(fn) {
+                currentFetch = fn;
+              },
+              configurable: true,
+              enumerable: true,
+            });
+          } catch (_) {
+            var proto = Object.getPrototypeOf(window);
+            if (proto) {
+              Object.defineProperty(proto, 'fetch', {
+                get: function() {
+                  return currentFetch;
+                },
+                set: function(fn) {
+                  currentFetch = fn;
+                },
+                configurable: true,
+                enumerable: true,
+              });
+            }
+          }
+        } catch (err) {
+          // ignore
+        }
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scholaris Academic — Online Assignment Submission System</title>
+    <meta name="description" content="A prestigious, secure academic portal for colleges and universities to manage assignments, student submissions, evaluation rubrics, and grading workflows." />
+    <meta property="og:title" content="Scholaris Academic — Online Assignment Submission System" />
+    <meta property="og:description" content="A prestigious, secure academic portal for colleges and universities to manage assignments, student submissions, evaluation rubrics, and grading workflows." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

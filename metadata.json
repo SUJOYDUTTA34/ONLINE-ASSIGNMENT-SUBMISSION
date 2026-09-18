@@ -1,0 +1,6 @@
+{
+  "name": "Scholaris Academic - Online Assignment Submission System",
+  "description": "A prestigious, secure academic portal for colleges and universities to manage assignments, student submissions, evaluation rubrics, and grading workflows.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
