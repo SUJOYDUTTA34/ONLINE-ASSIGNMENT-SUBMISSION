@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../services/storage';
 import { Submission, Assignment } from '../../types';
@@ -52,12 +53,17 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
   return (
     <div id="faculty-dashboard" className="space-y-6">
       {/* Faculty Profile Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white shadow-lg relative overflow-hidden">
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white shadow-lg relative overflow-hidden"
+      >
         <div className="absolute right-0 top-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 text-xs font-semibold mb-3 border border-blue-400/20">
-              <Sparkles className="w-3.5 h-3.5" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
               Faculty Portal • Academic Year 2026–2027
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
@@ -73,78 +79,66 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               id="faculty-create-assignment-cta"
               onClick={onOpenCreateAssignment}
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white shadow-md shadow-blue-600/30 flex items-center gap-2 transition-all hover:scale-[1.02]"
+              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white shadow-md shadow-blue-600/30 flex items-center gap-2 transition-all cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
               Create Assignment
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => onNavigateTab('submissions')}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-white transition-all backdrop-blur-xs flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-white transition-all backdrop-blur-xs flex items-center gap-2 cursor-pointer"
             >
               <UploadCloud className="w-4 h-4" />
               View Submissions
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => onNavigateTab('analytics')}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-white transition-all backdrop-blur-xs flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-white transition-all backdrop-blur-xs flex items-center gap-2 cursor-pointer"
             >
               <BarChart3 className="w-4 h-4" />
               Course Analytics
-            </button>
+            </motion.button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* 5 Statistics KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Total Courses</span>
-            <BookOpen className="w-4 h-4 text-blue-500" />
-          </div>
-          <p className="text-2xl font-black text-slate-900 dark:text-white">{totalCourses}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Assigned sections</p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Active Assignments</span>
-            <FileText className="w-4 h-4 text-indigo-500" />
-          </div>
-          <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{activeAssignments}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Published to students</p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Submissions</span>
-            <UploadCloud className="w-4 h-4 text-cyan-500" />
-          </div>
-          <p className="text-2xl font-black text-cyan-600 dark:text-cyan-400">{totalSubmissions}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Total uploads received</p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Pending Grading</span>
-            <Clock className="w-4 h-4 text-amber-500" />
-          </div>
-          <p className="text-2xl font-black text-amber-600 dark:text-amber-400">{pendingGrading}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Awaiting evaluation</p>
-        </div>
-
-        <div className="col-span-2 sm:col-span-1 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Graded</span>
-            <CheckSquare className="w-4 h-4 text-emerald-500" />
-          </div>
-          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{gradedSubmissions}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Feedback delivered</p>
-        </div>
+        {[
+          { label: 'Total Courses', icon: BookOpen, iconColor: 'text-blue-500', value: totalCourses, sub: 'Assigned sections', textColor: 'text-slate-900 dark:text-white' },
+          { label: 'Active Assignments', icon: FileText, iconColor: 'text-indigo-500', value: activeAssignments, sub: 'Published to students', textColor: 'text-indigo-600 dark:text-indigo-400' },
+          { label: 'Submissions', icon: UploadCloud, iconColor: 'text-cyan-500', value: totalSubmissions, sub: 'Total uploads received', textColor: 'text-cyan-600 dark:text-cyan-400' },
+          { label: 'Pending Grading', icon: Clock, iconColor: 'text-amber-500', value: pendingGrading, sub: 'Awaiting evaluation', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Graded', icon: CheckSquare, iconColor: 'text-emerald-500', value: gradedSubmissions, sub: 'Feedback delivered', textColor: 'text-emerald-600 dark:text-emerald-400', className: 'col-span-2 sm:col-span-1' },
+        ].map((stat, i) => {
+          const StatIcon = stat.icon;
+          return (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 15, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.25, delay: 0.05 * i }}
+              whileHover={{ y: -3, transition: { duration: 0.15 } }}
+              className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md ${stat.className || ''}`}
+            >
+              <div className="flex items-center justify-between text-slate-400 mb-2">
+                <span className="text-xs font-semibold">{stat.label}</span>
+                <StatIcon className={`w-4 h-4 ${stat.iconColor}`} />
+              </div>
+              <p className={`text-2xl font-black ${stat.textColor}`}>{stat.value}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{stat.sub}</p>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Courses Cards Grid */}

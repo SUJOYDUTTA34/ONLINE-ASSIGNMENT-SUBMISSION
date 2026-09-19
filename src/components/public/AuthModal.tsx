@@ -284,9 +284,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               >
               {/* Quick Role Fill Chips */}
               <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-                <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1.5 flex items-center justify-between">
-                  <span>Quick Demo Sign In:</span>
-                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-normal">Click to fill</span>
+                <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
+                  Quick Demo Sign In:
                 </p>
                 <div className="grid grid-cols-3 gap-1.5 text-[11px]">
                   <button

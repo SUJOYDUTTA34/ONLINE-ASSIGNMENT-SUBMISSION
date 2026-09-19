@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../services/storage';
 import { Assignment, Submission } from '../../types';
@@ -62,12 +63,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   return (
     <div id="student-dashboard" className="space-y-6">
       {/* Welcome Section */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 text-white shadow-lg relative overflow-hidden">
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        className="p-6 rounded-2xl bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 text-white shadow-lg relative overflow-hidden"
+      >
         <div className="absolute right-0 top-0 w-80 h-80 bg-white/5 rounded-full blur-2xl -translate-y-10 translate-x-10 pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 text-xs font-semibold mb-3 border border-blue-400/20">
-              <Sparkles className="w-3.5 h-3.5" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
               Academic Session 2026–2027 • Fall Term
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
@@ -86,78 +92,105 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               id="student-view-grades-cta"
               onClick={onViewGradesTab}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-white transition-all backdrop-blur-xs flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-white transition-all backdrop-blur-xs flex items-center gap-2 cursor-pointer"
             >
               <Award className="w-4 h-4 text-amber-300" />
               View Gradebook
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               id="student-view-submissions-cta"
               onClick={onViewSubmissionsTab}
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white transition-all shadow-md shadow-blue-600/30 flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white transition-all shadow-md shadow-blue-600/30 flex items-center gap-2 cursor-pointer"
             >
               <UploadCloud className="w-4 h-4" />
               My Submissions
-            </button>
+            </motion.button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* 5 Statistics Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Total Coursework</span>
-            <FileText className="w-4 h-4 text-blue-500" />
-          </div>
-          <p className="text-2xl font-black text-slate-900 dark:text-white">{totalAssignments}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Enrolled assignments</p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Pending</span>
-            <Clock className="w-4 h-4 text-amber-500" />
-          </div>
-          <p className="text-2xl font-black text-amber-600 dark:text-amber-400">{pendingAssignments}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Awaiting your upload</p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Submitted</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-          </div>
-          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{submittedCount}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Delivered to professors</p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Graded</span>
-            <Award className="w-4 h-4 text-purple-500" />
-          </div>
-          <p className="text-2xl font-black text-purple-600 dark:text-purple-400">{gradedCount}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Evaluated with feedback</p>
-        </div>
-
-        <div className="col-span-2 sm:col-span-1 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Upcoming Due</span>
-            <AlertCircle className="w-4 h-4 text-rose-500" />
-          </div>
-          <p className="text-2xl font-black text-rose-600 dark:text-rose-400">{upcomingDeadlines}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Action needed</p>
-        </div>
+        {[
+          {
+            label: 'Total Coursework',
+            icon: FileText,
+            iconColor: 'text-blue-500',
+            value: totalAssignments,
+            textColor: 'text-slate-900 dark:text-white',
+            sub: 'Enrolled assignments',
+          },
+          {
+            label: 'Pending',
+            icon: Clock,
+            iconColor: 'text-amber-500',
+            value: pendingAssignments,
+            textColor: 'text-amber-600 dark:text-amber-400',
+            sub: 'Awaiting your upload',
+          },
+          {
+            label: 'Submitted',
+            icon: CheckCircle2,
+            iconColor: 'text-emerald-500',
+            value: submittedCount,
+            textColor: 'text-emerald-600 dark:text-emerald-400',
+            sub: 'Delivered to professors',
+          },
+          {
+            label: 'Graded',
+            icon: Award,
+            iconColor: 'text-purple-500',
+            value: gradedCount,
+            textColor: 'text-purple-600 dark:text-purple-400',
+            sub: 'Evaluated with feedback',
+          },
+          {
+            label: 'Upcoming Due',
+            icon: AlertCircle,
+            iconColor: 'text-rose-500',
+            value: upcomingDeadlines,
+            textColor: 'text-rose-600 dark:text-rose-400',
+            sub: 'Action needed',
+            className: 'col-span-2 sm:col-span-1',
+          },
+        ].map((stat, i) => {
+          const StatIcon = stat.icon;
+          return (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 15, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.25, delay: 0.05 * i }}
+              whileHover={{ y: -3, transition: { duration: 0.15 } }}
+              className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md ${stat.className || ''}`}
+            >
+              <div className="flex items-center justify-between text-slate-400 mb-2">
+                <span className="text-xs font-semibold">{stat.label}</span>
+                <StatIcon className={`w-4 h-4 ${stat.iconColor}`} />
+              </div>
+              <p className={`text-2xl font-black ${stat.textColor}`}>{stat.value}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{stat.sub}</p>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Grid: Upcoming Assignments & Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Upcoming Assignments Table */}
-        <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+          className="lg:col-span-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden"
+        >
           <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div>
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -253,21 +286,25 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                               onClick={() => onSelectAssignment(asg)}
-                              className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium"
+                              className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium cursor-pointer"
                             >
                               View
-                            </button>
+                            </motion.button>
 
                             {(!submission || asg.allowResubmission) && (
-                              <button
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => onOpenSubmitModal(asg)}
-                                className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-1 shadow-xs"
+                                className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-1 shadow-xs cursor-pointer"
                               >
                                 <UploadCloud className="w-3.5 h-3.5" />
                                 {submission ? 'Resubmit' : 'Submit'}
-                              </button>
+                              </motion.button>
                             )}
                           </div>
                         </td>
@@ -278,10 +315,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               </tbody>
             </table>
           </div>
-        </div>
+        </motion.div>
 
         {/* Right 1 Col: Recent Activity & Notifications */}
-        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs p-5 space-y-4">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.25 }}
+          className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs p-5 space-y-4"
+        >
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <BellRing className="w-4 h-4 text-blue-500" />
@@ -296,10 +338,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             {recentNotifications.length === 0 ? (
               <p className="text-xs text-slate-400 text-center py-6">No recent updates</p>
             ) : (
-              recentNotifications.map((item) => (
-                <div
+              recentNotifications.map((item, idx) => (
+                <motion.div
                   key={item.id}
-                  className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/80"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.2, delay: 0.1 + idx * 0.05 }}
+                  className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/80 hover:border-slate-200 dark:hover:border-slate-700 transition-colors"
                 >
                   <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{item.title}</p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
@@ -308,11 +353,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   <p className="text-[10px] text-slate-400 mt-1 font-mono">
                     {new Date(item.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                   </p>
-                </div>
+                </motion.div>
               ))
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

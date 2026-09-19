@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../services/storage';
 import { Header } from './Header';
@@ -281,7 +282,17 @@ export const Layout: React.FC<LayoutProps> = ({ onLogoutToLanding }) => {
 
         {/* Main Content Area */}
         <main className="flex-1 min-w-0 pb-12">
-          {renderContent()}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 12, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.995 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+            >
+              {renderContent()}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
 

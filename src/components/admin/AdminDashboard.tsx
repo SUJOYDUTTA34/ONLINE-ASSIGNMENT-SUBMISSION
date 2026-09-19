@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../services/storage';
 import {
@@ -76,12 +77,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   return (
     <div id="admin-dashboard" className="space-y-6">
       {/* Admin Hero Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-950 via-purple-950 to-slate-900 text-white shadow-lg relative overflow-hidden">
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        className="p-6 rounded-2xl bg-gradient-to-r from-slate-950 via-purple-950 to-slate-900 text-white shadow-lg relative overflow-hidden"
+      >
         <div className="absolute right-0 top-0 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-200 text-xs font-semibold mb-3 border border-purple-400/20">
-              <ShieldAlert className="w-3.5 h-3.5" />
+              <ShieldAlert className="w-3.5 h-3.5 text-purple-300 animate-pulse" />
               Central System Administration & Governance
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
@@ -93,74 +99,65 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               id="admin-add-user-btn"
               onClick={onOpenAddUser}
-              className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-semibold text-white shadow-md shadow-purple-600/30 flex items-center gap-2 transition-all hover:scale-[1.02]"
+              className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-semibold text-white shadow-md shadow-purple-600/30 flex items-center gap-2 transition-all cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
               Provision User
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={onOpenAddCourse}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-white transition-all backdrop-blur-xs flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-white transition-all backdrop-blur-xs flex items-center gap-2 cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
               Add Course
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={handleResetData}
-              className="px-3.5 py-2.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/60 text-xs font-semibold text-rose-300 transition-all flex items-center gap-1.5"
+              className="px-3.5 py-2.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/60 text-xs font-semibold text-rose-300 transition-all flex items-center gap-1.5 cursor-pointer"
               title="Reset mock database to initial seed data"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Reset Seed Data
-            </button>
+            </motion.button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* 8 Statistics Cards Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 text-center">
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Users</span>
-          <p className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{stats.totalUsers}</p>
-        </div>
-
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Students</span>
-          <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{stats.totalStudents}</p>
-        </div>
-
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase">Faculty</span>
-          <p className="text-xl font-black text-blue-600 dark:text-blue-400 mt-0.5">{stats.totalFaculty}</p>
-        </div>
-
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase">Depts</span>
-          <p className="text-xl font-black text-purple-600 dark:text-purple-400 mt-0.5">{stats.totalDepartments}</p>
-        </div>
-
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Courses</span>
-          <p className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{stats.totalCourses}</p>
-        </div>
-
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Assignments</span>
-          <p className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{stats.totalAssignments}</p>
-        </div>
-
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">Submissions</span>
-          <p className="text-xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5">{stats.totalSubmissions}</p>
-        </div>
-
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Storage</span>
-          <p className="text-sm font-black font-mono text-slate-800 dark:text-slate-200 mt-1">{stats.storageUsed}</p>
-        </div>
+        {[
+          { label: 'Users', value: stats.totalUsers, color: 'text-slate-900 dark:text-white', topColor: 'text-slate-400' },
+          { label: 'Students', value: stats.totalStudents, color: 'text-emerald-600 dark:text-emerald-400', topColor: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'Faculty', value: stats.totalFaculty, color: 'text-blue-600 dark:text-blue-400', topColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Depts', value: stats.totalDepartments, color: 'text-purple-600 dark:text-purple-400', topColor: 'text-purple-600 dark:text-purple-400' },
+          { label: 'Courses', value: stats.totalCourses, color: 'text-slate-900 dark:text-white', topColor: 'text-slate-400' },
+          { label: 'Assignments', value: stats.totalAssignments, color: 'text-slate-900 dark:text-white', topColor: 'text-slate-400' },
+          { label: 'Submissions', value: stats.totalSubmissions, color: 'text-indigo-600 dark:text-indigo-400', topColor: 'text-indigo-600 dark:text-indigo-400' },
+          { label: 'Storage', value: stats.storageUsed, color: 'text-slate-800 dark:text-slate-200', topColor: 'text-slate-400', isStorage: true },
+        ].map((item, idx) => (
+          <motion.div
+            key={item.label}
+            initial={{ opacity: 0, y: 12, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.2, delay: 0.03 * idx }}
+            whileHover={{ y: -3, transition: { duration: 0.15 } }}
+            className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-shadow"
+          >
+            <span className={`text-[10px] font-bold ${item.topColor} uppercase`}>{item.label}</span>
+            <p className={`${item.isStorage ? 'text-sm font-black font-mono mt-1' : 'text-xl font-black mt-0.5'} ${item.color}`}>
+              {item.value}
+            </p>
+          </motion.div>
+        ))}
       </div>
 
       {/* Visualizations Grid */}

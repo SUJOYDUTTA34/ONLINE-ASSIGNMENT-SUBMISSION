@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import academicLogo from '../../assets/images/academic_crest_logo_1789753031183.jpg';
 import { UserAvatar } from '../common/UserAvatar';
@@ -127,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Nav List */}
       <nav id="sidebar-nav-menu" className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {navItems.map((item, idx) => {
           const Icon = item.icon;
           const isActive =
             activeTab === item.id ||
@@ -138,15 +139,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
             (item.id === 'reports' && activeTab === 'analytics');
 
           return (
-            <button
+            <motion.button
               key={item.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.2, delay: idx * 0.025 }}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
               id={`nav-item-${item.id}`}
               type="button"
               onClick={() => {
                 setActiveTab(item.id);
                 setMobileOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium cursor-pointer transition-all ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium cursor-pointer transition-all relative ${
                 isActive
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/70'
@@ -159,7 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {item.badge}
                 </span>
               )}
-            </button>
+            </motion.button>
           );
         })}
       </nav>
@@ -180,14 +186,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        <button
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           id="sidebar-logout-btn"
           onClick={logout}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-rose-400 hover:bg-rose-950/30 hover:text-rose-300 transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-rose-400 hover:bg-rose-950/30 hover:text-rose-300 transition-colors cursor-pointer"
         >
           <LogOut className="w-3.5 h-3.5" />
           <span>Sign Out</span>
-        </button>
+        </motion.button>
       </div>
     </div>
   );
@@ -195,25 +203,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside
+      <motion.aside
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
         id="desktop-sidebar"
         className="hidden lg:block w-64 shrink-0 rounded-2xl overflow-hidden border border-slate-800 h-[calc(100vh-5.5rem)] sticky top-20 shadow-xs z-10"
       >
         {content}
-      </aside>
+      </motion.aside>
 
       {/* Mobile Drawer */}
-      {mobileOpen && (
-        <div id="mobile-sidebar-drawer" className="fixed inset-0 z-50 lg:hidden flex">
-          <div
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
-            onClick={() => setMobileOpen(false)}
-          />
-          <div className="relative w-72 max-w-[80vw] h-full shadow-2xl z-10 animate-in slide-in-from-left duration-200">
-            {content}
+      <AnimatePresence>
+        {mobileOpen && (
+          <div id="mobile-sidebar-drawer" className="fixed inset-0 z-50 lg:hidden flex">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+              onClick={() => setMobileOpen(false)}
+            />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="relative w-72 max-w-[80vw] h-full shadow-2xl z-10"
+            >
+              {content}
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </>
   );
 };
