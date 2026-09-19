@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
+import { storage } from '../../services/storage';
+import { syncUserToSupabase, syncAppointmentToSupabase } from '../../services/supabaseClient';
 import academicLogo from '../../assets/images/academic_crest_logo_1789753031183.jpg';
 import {
   GraduationCap,
@@ -14,6 +16,7 @@ import {
   Shield,
   BookOpen,
   Sparkles,
+  Cloud,
 } from 'lucide-react';
 import { UserRole } from '../../types';
 
@@ -350,6 +353,51 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, setActive
                 >
                   <Settings className="w-4 h-4 text-slate-400" />
                   Settings & Preferences
+                </button>
+
+                <button
+                  id="profile-menu-sync-supabase-btn"
+                  onClick={async () => {
+                    setProfileOpen(false);
+                    const users = storage.getUsers();
+                    const submissions = storage.getSubmissions();
+                    let count = 0;
+                    for (const u of users) {
+                      await syncUserToSupabase({
+                        id: u.id,
+                        name: u.name,
+                        email: u.email,
+                        role: u.role,
+                        departmentName: u.departmentName,
+                        phone: u.phone,
+                        status: u.status,
+                        studentIdNumber: u.studentIdNumber,
+                        employeeIdNumber: u.employeeIdNumber,
+                        program: u.program,
+                        joinedDate: u.joinedDate,
+                      });
+                      count++;
+                    }
+                    for (const s of submissions) {
+                      await syncAppointmentToSupabase({
+                        id: s.id,
+                        studentId: s.studentId,
+                        studentName: s.studentName,
+                        assignmentId: s.assignmentId,
+                        assignmentTitle: s.assignmentTitle,
+                        courseCode: s.courseCode,
+                        submittedAt: s.submittedAt,
+                        status: s.status,
+                        notes: s.comments || '',
+                        fileUrl: s.fileName || '',
+                      });
+                    }
+                    alert(`Successfully synced ${users.length} users and ${submissions.length} submissions to Supabase! Check your Supabase Table Editor.`);
+                  }}
+                  className="w-full text-left px-3.5 py-2 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 flex items-center gap-2 font-medium"
+                >
+                  <Cloud className="w-4 h-4 text-blue-500" />
+                  Sync Data to Supabase Now
                 </button>
 
                 <div className="border-t border-slate-100 dark:border-slate-700/60 my-1" />

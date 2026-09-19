@@ -1,12 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://tcrjnxqkpwpkfqlxazth.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_85e5jMY77E1V2CPRmLlHOw_XyK4DJ1I';
+const SUPABASE_URL =
+  (import.meta.env && import.meta.env.VITE_SUPABASE_URL) ||
+  'https://tcrjnxqkpwpkfqlxazth.supabase.co';
+const SUPABASE_ANON_KEY =
+  (import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) ||
+  'sb_publishable_85e5jMY77E1V2CPRmLlHOw_XyK4DJ1I';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /**
- * Helper to sync appointment/submission records to Supabase table 'appointments' or 'submissions'.
+ * Helper to sync appointment/submission records to Supabase table 'appointments'.
  */
 export async function syncAppointmentToSupabase(record: {
   id: string;
@@ -46,6 +50,53 @@ export async function syncAppointmentToSupabase(record: {
     return { success: true, data };
   } catch (err: any) {
     console.error('Supabase connection error:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Helper to sync student and user registration records to Supabase table 'users'.
+ */
+export async function syncUserToSupabase(user: {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  departmentName?: string;
+  phone?: string;
+  status: string;
+  studentIdNumber?: string;
+  employeeIdNumber?: string;
+  program?: string;
+  joinedDate?: string;
+}) {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .upsert([
+        {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          department_name: user.departmentName || '',
+          phone: user.phone || '',
+          status: user.status,
+          student_id_number: user.studentIdNumber || '',
+          employee_id_number: user.employeeIdNumber || '',
+          program: user.program || '',
+          joined_date: user.joinedDate || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ], { onConflict: 'id' });
+
+    if (error) {
+      console.warn('Supabase user sync warning (table may need creation in Supabase dashboard):', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true, data };
+  } catch (err: any) {
+    console.error('Supabase user sync connection error:', err);
     return { success: false, error: err.message };
   }
 }

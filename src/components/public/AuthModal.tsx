@@ -50,12 +50,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const [registeredInfo, setRegisteredInfo] = useState<{
+    name: string;
+    email: string;
+    role: string;
+    idNumber: string;
+    department: string;
+    program: string;
+  } | null>(null);
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const departments = storage.getDepartments();
 
   if (!isOpen) return null;
+
+  const handleClose = () => {
+    setRegisteredInfo(null);
+    setError(null);
+    onClose();
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +84,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const res = await login(loginEmail, loginPassword, rememberMe);
     setLoading(false);
     if (res.success) {
-      onClose();
+      handleClose();
     } else {
       setError(res.message || 'Login failed. Please check your credentials.');
     }
@@ -92,6 +107,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
+    const effectiveId =
+      role === 'student'
+        ? identifier.trim() || `STU-${Date.now().toString().slice(-4)}`
+        : identifier.trim() || `FAC-${Date.now().toString().slice(-4)}`;
+
+    const effectiveProgram = program.trim() || (role === 'student' ? 'B.S. Computer Science' : 'Department Faculty');
+
     setLoading(true);
     const res = await register({
       name,
@@ -99,24 +121,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       phone,
       role,
       departmentId,
-      studentIdNumber: role === 'student' ? (identifier || `STU-${Date.now().toString().slice(-4)}`) : undefined,
-      employeeIdNumber: role === 'faculty' ? (identifier || `FAC-${Date.now().toString().slice(-4)}`) : undefined,
+      studentIdNumber: role === 'student' ? effectiveId : undefined,
+      employeeIdNumber: role === 'faculty' ? effectiveId : undefined,
       semester: role === 'student' ? semester : undefined,
-      program: program || (role === 'student' ? 'B.S. Computer Science' : 'Department Faculty'),
+      program: effectiveProgram,
       password,
     });
     setLoading(false);
 
     if (res.success) {
-      onClose();
+      const deptObj = departments.find((d) => d.id === departmentId);
+      setRegisteredInfo({
+        name,
+        email,
+        role: role === 'student' ? 'Student' : 'Faculty Member',
+        idNumber: effectiveId,
+        department: deptObj ? deptObj.name : 'Computer Science & Engineering',
+        program: effectiveProgram,
+      });
     } else {
       setError(res.message || 'Registration failed.');
     }
-  };
-
-  const fillQuickDemo = (demoRole: UserRole) => {
-    switchDemoUser(demoRole);
-    onClose();
   };
 
   return (
@@ -142,45 +167,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
           <button
             id="close-auth-modal-btn"
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <X className="w-5 h-5" />
           </button>
-        </div>
-
-        {/* Quick Demo Credentials Bar */}
-        <div className="bg-blue-50/70 dark:bg-blue-950/30 border-b border-blue-100 dark:border-blue-900/50 p-3">
-          <p className="text-[11px] font-semibold text-blue-900 dark:text-blue-300 mb-1.5 flex items-center justify-between">
-            <span>Instant Demo Sign-In (1-Click):</span>
-            <span className="text-[10px] text-blue-700 dark:text-blue-400 font-normal">Pre-configured roles</span>
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              id="quick-demo-student-btn"
-              type="button"
-              onClick={() => fillQuickDemo('student')}
-              className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors truncate"
-            >
-              🎓 Student
-            </button>
-            <button
-              id="quick-demo-faculty-btn"
-              type="button"
-              onClick={() => fillQuickDemo('faculty')}
-              className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors truncate"
-            >
-              👨‍🏫 Faculty
-            </button>
-            <button
-              id="quick-demo-admin-btn"
-              type="button"
-              onClick={() => fillQuickDemo('admin')}
-              className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors truncate"
-            >
-              🛡️ Admin
-            </button>
-          </div>
         </div>
 
         {/* Error Alert */}
@@ -192,7 +183,66 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         <div className="p-6">
-          {mode === 'login' ? (
+          {registeredInfo ? (
+            <div id="signup-confirmation-view" className="text-center py-4 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center mx-auto shadow-inner">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+
+              <div>
+                <span className="inline-block text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 mb-2">
+                  Account Created & Verified
+                </span>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Registration Confirmed!
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                  Welcome, <strong className="text-slate-800 dark:text-slate-200">{registeredInfo.name}</strong>. Your academic profile is now active in the university portal.
+                </p>
+              </div>
+
+              {/* Confirmation Details Card */}
+              <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-4 border border-slate-200/80 dark:border-slate-700/80 text-left text-xs space-y-2.5 shadow-xs">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+                  <span className="text-slate-500 dark:text-slate-400">Assigned Role:</span>
+                  <span className="font-semibold text-blue-600 dark:text-blue-400">{registeredInfo.role}</span>
+                </div>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+                  <span className="text-slate-500 dark:text-slate-400">Institutional ID:</span>
+                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{registeredInfo.idNumber}</span>
+                </div>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+                  <span className="text-slate-500 dark:text-slate-400">Registered Email:</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-200 truncate max-w-[200px]">{registeredInfo.email}</span>
+                </div>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+                  <span className="text-slate-500 dark:text-slate-400">Department:</span>
+                  <span className="text-slate-800 dark:text-slate-200">{registeredInfo.department}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Database Status:</span>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    Synced & Active
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-[11px] text-blue-800 dark:text-blue-300 text-left leading-relaxed">
+                <strong>Confirmation Notice:</strong> Your login credentials are registered. You can now access your assignment submission gateway, track deadlines, view grades, and communicate with instructors.
+              </div>
+
+              <button
+                id="proceed-to-workspace-btn"
+                type="button"
+                onClick={handleClose}
+                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2 hover:scale-[1.01]"
+              >
+                <span>Proceed to Academic Workspace</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          ) : mode === 'login' ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">

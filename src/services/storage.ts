@@ -21,7 +21,7 @@ import {
   INITIAL_AUDIT_LOGS,
   INITIAL_EMAIL_TEMPLATES,
 } from '../data/seedData';
-import { syncAppointmentToSupabase } from './supabaseClient';
+import { syncAppointmentToSupabase, syncUserToSupabase } from './supabaseClient';
 
 const KEYS = {
   USERS: 'oass_users_v1',
@@ -134,6 +134,24 @@ export const storage = {
       };
       setItem(KEYS.USERS, updatedUsers);
     }
+
+    // Sync all users to Supabase on startup
+    const finalUsers = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
+    finalUsers.forEach((u) => {
+      syncUserToSupabase({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        departmentName: u.departmentName,
+        phone: u.phone,
+        status: u.status,
+        studentIdNumber: u.studentIdNumber,
+        employeeIdNumber: u.employeeIdNumber,
+        program: u.program,
+        joinedDate: u.joinedDate,
+      });
+    });
   },
 
   resetAll() {
@@ -208,6 +226,20 @@ export const storage = {
       });
     }
 
+    syncUserToSupabase({
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      departmentName: newUser.departmentName,
+      phone: newUser.phone,
+      status: newUser.status,
+      studentIdNumber: newUser.studentIdNumber,
+      employeeIdNumber: newUser.employeeIdNumber,
+      program: newUser.program,
+      joinedDate: newUser.joinedDate,
+    });
+
     return newUser;
   },
 
@@ -233,6 +265,20 @@ export const storage = {
       });
     }
 
+    syncUserToSupabase({
+      id: updated.id,
+      name: updated.name,
+      email: updated.email,
+      role: updated.role,
+      departmentName: updated.departmentName,
+      phone: updated.phone,
+      status: updated.status,
+      studentIdNumber: updated.studentIdNumber,
+      employeeIdNumber: updated.employeeIdNumber,
+      program: updated.program,
+      joinedDate: updated.joinedDate,
+    });
+
     return updated;
   },
 
@@ -245,6 +291,21 @@ export const storage = {
       users.unshift(user);
     }
     setItem(KEYS.USERS, users);
+
+    syncUserToSupabase({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      departmentName: user.departmentName,
+      phone: user.phone,
+      status: user.status,
+      studentIdNumber: user.studentIdNumber,
+      employeeIdNumber: user.employeeIdNumber,
+      program: user.program,
+      joinedDate: user.joinedDate,
+    });
+
     return user;
   },
 

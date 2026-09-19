@@ -111,28 +111,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
             <span className="font-medium text-white">University Academic Portal 2026–2027</span>
             <span className="text-slate-500">•</span>
-            <span className="text-slate-400 hidden sm:inline">Fall Semester Submission Gateway Active</span>
+            <span className="text-slate-400 hidden sm:inline">Fall Semester Secure Authentication Gateway Active</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-slate-400 text-[11px] hidden md:inline">Quick Demo Login:</span>
-            <button
-              onClick={() => switchDemoUser('student')}
-              className="text-[11px] bg-emerald-950 text-emerald-300 border border-emerald-800/80 px-2 py-0.5 rounded hover:bg-emerald-900 transition-colors font-medium"
-            >
-              Student Demo
-            </button>
-            <button
-              onClick={() => switchDemoUser('faculty')}
-              className="text-[11px] bg-blue-950 text-blue-300 border border-blue-800/80 px-2 py-0.5 rounded hover:bg-blue-900 transition-colors font-medium"
-            >
-              Faculty Demo
-            </button>
-            <button
-              onClick={() => switchDemoUser('admin')}
-              className="text-[11px] bg-purple-950 text-purple-300 border border-purple-800/80 px-2 py-0.5 rounded hover:bg-purple-900 transition-colors font-medium"
-            >
-              Admin Demo
-            </button>
+            <span className="text-emerald-400 text-[11px] font-medium">Secure SSL Encrypted</span>
           </div>
         </div>
       </div>
@@ -183,8 +165,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
           <div className="flex items-center gap-3">
             <button
               id="landing-login-btn"
+              type="button"
               onClick={onOpenLogin}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
             >
               <LogIn className="w-4 h-4" />
               Sign In
@@ -496,58 +479,46 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
           </div>
 
           <div className="p-8 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-950 text-white border border-slate-800 shadow-xl">
-            <h3 className="text-xl font-bold mb-4">Instant Demo Credentials</h3>
+            <h3 className="text-xl font-bold mb-4">Secure Authentication Guidelines</h3>
             <p className="text-xs text-slate-300 mb-6 leading-relaxed">
-              Review all roles immediately with zero setup required. Click any persona below to experience the system:
+              All access to administrative, faculty, and student portals requires entering valid institutional credentials and secure authentication.
             </p>
 
             <div className="space-y-3">
-              <div
-                onClick={() => switchDemoUser('student')}
-                className="p-3.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 cursor-pointer transition-all flex items-center justify-between"
-              >
+              <div className="p-3.5 rounded-xl bg-white/10 border border-white/10 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
                     <GraduationCap className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold">Student Persona</p>
-                    <p className="text-[11px] text-slate-300">Alex Morgan (CS-2024-001) • alex.morgan@student.campus.edu</p>
+                    <p className="text-xs font-bold">Student Portal Access</p>
+                    <p className="text-[11px] text-slate-300">Requires Student ID & Institutional Email (e.g. sujoydutta830@gmail.com)</p>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
               </div>
 
-              <div
-                onClick={() => switchDemoUser('faculty')}
-                className="p-3.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 cursor-pointer transition-all flex items-center justify-between"
-              >
+              <div className="p-3.5 rounded-xl bg-white/10 border border-white/10 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
                     <BookOpen className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold">Faculty / Teacher Persona</p>
-                    <p className="text-[11px] text-slate-300">Prof. Robert Chen (FAC-402) • robert.chen@campus.edu</p>
+                    <p className="text-xs font-bold">Faculty Portal Access</p>
+                    <p className="text-[11px] text-slate-300">Requires Faculty ID & Secure Password Authentication</p>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
               </div>
 
-              <div
-                onClick={() => switchDemoUser('admin')}
-                className="p-3.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 cursor-pointer transition-all flex items-center justify-between"
-              >
+              <div className="p-3.5 rounded-xl bg-white/10 border border-white/10 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold">
                     <ShieldCheck className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold">Administrator Persona</p>
-                    <p className="text-[11px] text-slate-300">Dr. Eleanor Vance (ADM-901) • admin@campus.edu</p>
+                    <p className="text-xs font-bold">Administrator Portal Access</p>
+                    <p className="text-[11px] text-slate-300">Restricted to IT Staff & Department Heads via Encrypted Gateway</p>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
               </div>
             </div>
           </div>

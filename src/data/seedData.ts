@@ -197,6 +197,24 @@ export const INITIAL_USERS: User[] = [
     address: 'Midnapore College Autonomous, Midnapore, West Bengal - 721101',
     bio: 'I am Sujoy Dutta, a motivated student interested in technology, software development, and learning new skills. I enjoy working on academic projects, exploring modern technologies, and improving my technical and problem-solving abilities.',
   },
+  {
+    id: 'user-stu-sumi',
+    name: 'Sumi Das',
+    email: 'sumi.das@campus.edu',
+    role: 'student',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    status: 'active',
+    phone: '+91 98765 43210',
+    departmentId: 'dept-1',
+    departmentName: 'Computer Science',
+    studentIdNumber: '2024-sumi',
+    semester: 5,
+    program: 'Computer Science (B.Sc.) - 3rd Year',
+    joinedDate: '2026-09-18',
+    institution: 'Midnapore College Autonomous',
+    address: 'Midnapore, West Bengal',
+    bio: 'Demo student account for testing Supabase database synchronization.',
+  },
 ];
 
 export const INITIAL_COURSES: Course[] = [

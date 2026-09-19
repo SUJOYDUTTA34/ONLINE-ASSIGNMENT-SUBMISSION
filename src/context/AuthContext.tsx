@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { storage } from '../services/storage';
+import { syncUserToSupabase } from '../services/supabaseClient';
 
 interface AuthContextType {
   user: User | null;
@@ -114,6 +115,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     storage.saveUser(newUser);
     setUser(newUser);
     storage.setCurrentUserId(newUser.id);
+
+    try {
+      await syncUserToSupabase({
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        departmentName: newUser.departmentName,
+        phone: newUser.phone,
+        status: newUser.status,
+        studentIdNumber: newUser.studentIdNumber,
+        employeeIdNumber: newUser.employeeIdNumber,
+        program: newUser.program,
+        joinedDate: newUser.joinedDate,
+      });
+    } catch (err) {
+      console.error('Supabase registration sync error:', err);
+    }
 
     // Auto-enroll new students into general CSE/IT courses so they immediately have active assignments!
     if (role === 'student') {
