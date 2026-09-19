@@ -28,7 +28,6 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister }) => {
-  const { switchDemoUser } = useAuth();
   const [howItWorksRole, setHowItWorksRole] = useState<'student' | 'faculty'>('student');
 
   const stats = storage.getSystemStats();
@@ -174,8 +173,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
             </button>
             <button
               id="landing-get-started-btn"
+              type="button"
               onClick={onOpenRegister}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/30 transition-all hover:scale-[1.02]"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/30 transition-all hover:scale-[1.02] cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
               Create Account
@@ -209,27 +209,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <button
                 id="hero-student-portal-btn"
-                onClick={() => switchDemoUser('student')}
-                className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all hover:scale-[1.02]"
+                onClick={onOpenRegister}
+                className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all hover:scale-[1.02] cursor-pointer"
               >
                 <GraduationCap className="w-4 h-4" />
-                <span>Open Student Portal</span>
+                <span>Student Registration</span>
               </button>
               <button
                 id="hero-faculty-portal-btn"
-                onClick={() => switchDemoUser('faculty')}
-                className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-600/20 flex items-center gap-2 transition-all hover:scale-[1.02]"
+                onClick={onOpenLogin}
+                className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-600/20 flex items-center gap-2 transition-all hover:scale-[1.02] cursor-pointer"
               >
                 <BookOpen className="w-4 h-4" />
-                <span>Open Faculty Portal</span>
+                <span>Faculty Sign In</span>
               </button>
               <button
                 id="hero-login-btn"
                 onClick={onOpenLogin}
-                className="px-5 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+                className="px-5 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <LogIn className="w-4 h-4 text-slate-500" />
-                <span>Sign In / Custom Login</span>
+                <span>Sign In to Portal</span>
               </button>
             </div>
           </div>
@@ -495,7 +495,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
                   </div>
                   <div>
                     <p className="text-xs font-bold">Student Portal Access</p>
-                    <p className="text-[11px] text-slate-300">Requires Student ID & Institutional Email (e.g. sujoydutta830@gmail.com)</p>
+                    <p className="text-[11px] text-slate-300">Requires Student ID & Institutional Email (e.g. student@campus.edu)</p>
                   </div>
                 </div>
               </div>

@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { storage } from '../../services/storage';
 import { User, UserRole } from '../../types';
+import { UserAvatar } from '../common/UserAvatar';
 import {
   Users,
   UserPlus,
@@ -336,10 +337,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                   >
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
-                        <img
+                        <UserAvatar
                           src={u.avatarUrl}
-                          alt={u.name}
-                          className="w-8 h-8 rounded-full object-cover shrink-0"
+                          name={u.name}
+                          size="md"
                         />
                         <div className="min-w-0">
                           <p className="font-semibold text-slate-900 dark:text-white truncate">

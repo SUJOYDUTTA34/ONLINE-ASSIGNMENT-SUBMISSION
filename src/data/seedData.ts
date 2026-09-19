@@ -1,4 +1,8 @@
 import { User, Department, Course, Assignment, Submission, Grade, AppNotification, AuditLog, EmailTemplate } from '../types';
+import shovanRoyAvatar from '../assets/images/shovan_roy_avatar_1789754117570.jpg';
+import sujoyDuttaAvatar from '../assets/images/sujoy_dutta_avatar_1789757328131.jpg';
+
+export { shovanRoyAvatar, sujoyDuttaAvatar };
 
 export const INITIAL_DEPARTMENTS: Department[] = [
   {
@@ -59,7 +63,7 @@ export const INITIAL_USERS: User[] = [
     email: 'shovan.roy@midnaporecollege.ac.in',
     alternateEmail: 'sho.cmsa.08@gmail.com',
     role: 'faculty',
-    avatarUrl: '/src/assets/images/shovan_roy_avatar_1789754117570.jpg',
+    avatarUrl: shovanRoyAvatar,
     status: 'active',
     phone: '+91 94340 12345',
     departmentId: 'dept-1',
@@ -184,7 +188,7 @@ export const INITIAL_USERS: User[] = [
     name: 'Sujoy Dutta',
     email: 'sujoydutta830@gmail.com',
     role: 'student',
-    avatarUrl: '/src/assets/images/sujoy_dutta_avatar_1789757328131.jpg',
+    avatarUrl: sujoyDuttaAvatar,
     status: 'active',
     phone: '+91 8967099896',
     departmentId: 'dept-1',

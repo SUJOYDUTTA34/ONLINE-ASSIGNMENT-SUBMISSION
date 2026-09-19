@@ -19,6 +19,7 @@ import {
   Cloud,
 } from 'lucide-react';
 import { UserRole } from '../../types';
+import { UserAvatar } from '../common/UserAvatar';
 
 interface HeaderProps {
   onToggleMobileSidebar: () => void;
@@ -302,10 +303,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, setActive
               className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label="User profile menu"
             >
-              <img
+              <UserAvatar
                 src={user.avatarUrl}
-                alt={user.name}
-                className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+                name={user.name}
+                size="md"
+                className="border border-slate-200 dark:border-slate-700"
               />
               <div className="hidden lg:block text-left">
                 <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import academicLogo from '../../assets/images/academic_crest_logo_1789753031183.jpg';
+import { UserAvatar } from '../common/UserAvatar';
 import {
   LayoutDashboard,
   BookOpen,
@@ -166,10 +167,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* User Mini Card in Sidebar Footer */}
       <div className="p-3 border-t border-slate-800 bg-slate-950/40">
         <div className="flex items-center gap-2.5 px-2 py-2 mb-2 rounded-lg bg-slate-800/40">
-          <img
+          <UserAvatar
             src={user.avatarUrl}
-            alt={user.name}
-            className="w-7 h-7 rounded-full object-cover"
+            name={user.name}
+            size="sm"
           />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-white truncate">{user.name}</p>

@@ -20,6 +20,8 @@ import {
   INITIAL_NOTIFICATIONS,
   INITIAL_AUDIT_LOGS,
   INITIAL_EMAIL_TEMPLATES,
+  shovanRoyAvatar,
+  sujoyDuttaAvatar,
 } from '../data/seedData';
 import { syncAppointmentToSupabase, syncUserToSupabase } from './supabaseClient';
 
@@ -69,13 +71,24 @@ export const storage = {
     getItem(KEYS.AUDIT_LOGS, INITIAL_AUDIT_LOGS);
     getItem(KEYS.EMAIL_TEMPLATES, INITIAL_EMAIL_TEMPLATES);
 
-    // Clean up old dummy student profiles
+    // Clean up old dummy student profiles and fix cached avatar paths
     let cleanUsers = getItem<User[]>(KEYS.USERS, INITIAL_USERS).filter(
       (u) => !['user-stu-2', 'user-stu-3', 'user-stu-4'].includes(u.id)
     );
 
     // Remove old Sarah Jenkins or Marcus Brody if they exist
     cleanUsers = cleanUsers.filter(u => u.email !== 'sarah.jenkins@campus.edu' && u.email !== 'marcus.brody@campus.edu');
+
+    // Fix avatar URLs if pointing to raw relative path
+    cleanUsers = cleanUsers.map((u) => {
+      if (u.id === 'user-stu-1') {
+        return { ...u, avatarUrl: sujoyDuttaAvatar };
+      }
+      if (u.id === 'user-fac-1') {
+        return { ...u, avatarUrl: shovanRoyAvatar };
+      }
+      return u;
+    });
 
     // Ensure new faculty members are present from INITIAL_USERS
     INITIAL_USERS.forEach(initU => {
@@ -106,7 +119,7 @@ export const storage = {
         dateOfJoining: '2015-07-15',
         researchInterests: 'Distributed Systems, Cloud Computing, Wireless Sensor Networks & Data Mining',
         phdMphilTitle: 'Pursuing / High Performance Scalable Distributed Computing Architectures',
-        avatarUrl: '/src/assets/images/shovan_roy_avatar_1789754117570.jpg',
+        avatarUrl: shovanRoyAvatar,
         phone: '+91 94340 12345',
         address: 'Dept. of Computer Science, Midnapore College (Autonomous), Midnapore, West Bengal - 721101',
         bio: 'Assistant Professor & HOD in the Department of Computer Science at Midnapore College (Autonomous). Areas of academic inquiry and research include Distributed Computing, Cloud Infrastructures, and Data Mining.',
@@ -117,12 +130,12 @@ export const storage = {
     // Sync student user-stu-1 to Sujoy Dutta
     const updatedUsers = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
     const stuIdx = updatedUsers.findIndex((u) => u.id === 'user-stu-1');
-    if (stuIdx >= 0 && (updatedUsers[stuIdx].name !== 'Sujoy Dutta' || !updatedUsers[stuIdx].avatarUrl?.includes('sujoy_dutta_avatar'))) {
+    if (stuIdx >= 0) {
       updatedUsers[stuIdx] = {
         ...updatedUsers[stuIdx],
         name: 'Sujoy Dutta',
         email: 'sujoydutta830@gmail.com',
-        avatarUrl: '/src/assets/images/sujoy_dutta_avatar_1789757328131.jpg',
+        avatarUrl: sujoyDuttaAvatar,
         phone: '+91 8967099896',
         departmentName: 'Computer Science',
         studentIdNumber: '2024-1388',

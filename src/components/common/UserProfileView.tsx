@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../services/storage';
+import { UserAvatar } from './UserAvatar';
 import {
   User as UserIcon,
   Mail,
@@ -114,10 +115,11 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigateToSe
         <div className="px-6 pb-6 pt-0 relative">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12 mb-4">
             <div className="flex items-end gap-4">
-              <img
+              <UserAvatar
                 src={user.avatarUrl}
-                alt={user.name}
-                className="w-24 h-24 rounded-2xl object-cover border-4 border-white dark:border-slate-900 shadow-md bg-white"
+                name={user.name}
+                size="xl"
+                className="w-24 h-24 rounded-2xl border-4 border-white dark:border-slate-900 shadow-md bg-white object-cover"
               />
               <div className="mb-1">
                 <div className="flex items-center gap-2">
