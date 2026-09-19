@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../services/storage';
 import academicLogo from '../../assets/images/academic_crest_logo_1789753031183.jpg';
@@ -192,50 +193,86 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-semibold mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            className="text-center max-w-3xl mx-auto"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1, duration: 0.4 }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-semibold mb-6"
+            >
               <Sparkles className="w-3.5 h-3.5" />
               Next-Gen Academic Submission Architecture
-            </div>
+            </motion.div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.1]">
+            <motion.h1
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15, duration: 0.5 }}
+              className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.1]"
+            >
               Smart & Simple Online Assignment Submission
-            </h1>
+            </motion.h1>
 
-            <p className="mt-6 text-lg sm:text-xl text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto">
+            <motion.p
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25, duration: 0.5 }}
+              className="mt-6 text-lg sm:text-xl text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto"
+            >
               Submit assignments, manage deadlines, track grades, and communicate with faculty — all from one secure platform.
-            </p>
+            </motion.p>
 
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <button
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35, duration: 0.5 }}
+              className="mt-8 flex flex-wrap items-center justify-center gap-3"
+            >
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
                 id="hero-student-portal-btn"
                 onClick={onOpenRegister}
-                className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all hover:scale-[1.02] cursor-pointer"
+                className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all cursor-pointer"
               >
                 <GraduationCap className="w-4 h-4" />
                 <span>Student Registration</span>
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
                 id="hero-faculty-portal-btn"
                 onClick={onOpenLogin}
-                className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-600/20 flex items-center gap-2 transition-all hover:scale-[1.02] cursor-pointer"
+                className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-600/20 flex items-center gap-2 transition-all cursor-pointer"
               >
                 <BookOpen className="w-4 h-4" />
                 <span>Faculty Sign In</span>
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
                 id="hero-login-btn"
                 onClick={onOpenLogin}
                 className="px-5 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <LogIn className="w-4 h-4 text-slate-500" />
                 <span>Sign In to Portal</span>
-              </button>
-            </div>
-          </div>
+              </motion.button>
+            </motion.div>
+          </motion.div>
 
           {/* Academic Illustration / Dashboard Preview */}
-          <div className="mt-14 max-w-5xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45, duration: 0.6 }}
+            className="mt-14 max-w-5xl mx-auto"
+          >
             <div className="relative rounded-2xl p-2 bg-gradient-to-b from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-900 shadow-2xl border border-slate-200/80 dark:border-slate-700">
               <div className="rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                 {/* Mock Browser Header */}
@@ -257,7 +294,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
 
                 {/* Simulated UI Content */}
                 <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50/50 dark:bg-slate-900/50">
-                  <div className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs">
+                  <motion.div
+                    whileHover={{ y: -3 }}
+                    className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs transition-shadow"
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">CS-301</span>
                       <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium">Due in 5 days</span>
@@ -268,9 +308,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
                       <span className="text-xs text-slate-400">PDF, DOCX, ZIP</span>
                       <span className="text-xs font-semibold text-blue-600 hover:underline">Submit Now →</span>
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs">
+                  <motion.div
+                    whileHover={{ y: -3 }}
+                    className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs transition-shadow"
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">CS-402</span>
                       <span className="text-[10px] bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">Published</span>
@@ -281,9 +324,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
                       <span className="text-xs text-slate-400">ZIP, PDF</span>
                       <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">View Details</span>
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs">
+                  <motion.div
+                    whileHover={{ y: -3 }}
+                    className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs transition-shadow"
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">CS-301</span>
                       <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold">Graded: 19.5/20</span>
@@ -294,54 +340,66 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
                       <span className="text-xs text-emerald-600 font-medium">Feedback Available</span>
                       <span className="text-xs font-semibold text-blue-600 hover:underline">View Receipt</span>
                     </div>
-                  </div>
+                  </motion.div>
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Configurable Statistics Section */}
       <section id="statistics" className="py-16 bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center max-w-xl mx-auto mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-center max-w-xl mx-auto mb-12"
+          >
             <h2 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
               Campus Scale & Engagement
             </h2>
             <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mt-1">
               Powering Higher Education Coursework
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-              <p className="text-3xl sm:text-4xl font-black text-blue-600 dark:text-blue-400">1,000+</p>
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-1">Active Students</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{stats.totalStudents} currently active in session</p>
-            </div>
-            <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-              <p className="text-3xl sm:text-4xl font-black text-indigo-600 dark:text-indigo-400">100+</p>
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-1">Faculty Members</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{stats.totalFaculty} professors on portal</p>
-            </div>
-            <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-              <p className="text-3xl sm:text-4xl font-black text-emerald-600 dark:text-emerald-400">500+</p>
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-1">Assignments Handled</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{stats.totalAssignments} active in catalog</p>
-            </div>
-            <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-              <p className="text-3xl sm:text-4xl font-black text-purple-600 dark:text-purple-400">50+</p>
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-1">Accredited Courses</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{stats.totalCourses} departmental offerings</p>
-            </div>
+            {[
+              { val: '1,000+', title: 'Active Students', sub: `${stats.totalStudents} currently active in session`, color: 'text-blue-600 dark:text-blue-400' },
+              { val: '100+', title: 'Faculty Members', sub: `${stats.totalFaculty} professors on portal`, color: 'text-indigo-600 dark:text-indigo-400' },
+              { val: '500+', title: 'Assignments Handled', sub: `${stats.totalAssignments} active in catalog`, color: 'text-emerald-600 dark:text-emerald-400' },
+              { val: '50+', title: 'Accredited Courses', sub: `${stats.totalCourses} departmental offerings`, color: 'text-purple-600 dark:text-purple-400' },
+            ].map((statItem, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: idx * 0.1 }}
+                whileHover={{ y: -3 }}
+                className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 shadow-xs"
+              >
+                <p className={`text-3xl sm:text-4xl font-black ${statItem.color}`}>{statItem.val}</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-1">{statItem.title}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{statItem.sub}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Features Cards Grid */}
       <section id="features" className="py-20 max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="text-center max-w-2xl mx-auto mb-16">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="text-center max-w-2xl mx-auto mb-16"
+        >
           <h2 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
             Enterprise Academic Features
           </h2>
@@ -351,15 +409,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
           <p className="text-slate-600 dark:text-slate-400 text-sm mt-3">
             Every feature designed to eliminate submission friction, prevent lost assignments, and ensure transparent grading.
           </p>
-        </div>
+        </motion.div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {features.map((f, i) => {
             const Icon = f.icon;
             return (
-              <div
+              <motion.div
                 key={i}
-                className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-blue-500/40 dark:hover:border-blue-500/40 shadow-xs hover:shadow-md transition-all group"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.08 }}
+                whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-blue-500/40 dark:hover:border-blue-500/40 shadow-xs hover:shadow-md transition-all group cursor-pointer"
               >
                 <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 ${f.color}`}>
                   <Icon className="w-5 h-5" />
@@ -370,7 +433,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                   {f.desc}
                 </p>
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -379,7 +442,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
       {/* How It Works Section */}
       <section id="how-it-works" className="py-20 bg-slate-100/70 dark:bg-slate-900/60 border-y border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center max-w-xl mx-auto mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-center max-w-xl mx-auto mb-12"
+          >
             <h2 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
               Streamlined Workflows
             </h2>
@@ -392,54 +461,74 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
 
             {/* Role Switcher Pill */}
             <div className="inline-flex p-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 mt-6 shadow-xs">
-              <button
+              <motion.button
+                whileTap={{ scale: 0.96 }}
                 onClick={() => setHowItWorksRole('student')}
-                className={`px-5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   howItWorksRole === 'student'
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                 }`}
               >
                 For Students (6 Steps)
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.96 }}
                 onClick={() => setHowItWorksRole('faculty')}
-                className={`px-5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   howItWorksRole === 'faculty'
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                 }`}
               >
                 For Faculty (6 Steps)
-              </button>
+              </motion.button>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(howItWorksRole === 'student' ? studentSteps : facultySteps).map((step, idx) => (
-              <div
-                key={idx}
-                className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 relative shadow-xs"
-              >
-                <span className="text-2xl font-black text-blue-600/30 dark:text-blue-400/20 mb-3 block">
-                  {step.num}
-                </span>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">
-                  {step.title}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {step.desc}
-                </p>
-              </div>
-            ))}
-          </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={howItWorksRole}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.3 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {(howItWorksRole === 'student' ? studentSteps : facultySteps).map((step, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: idx * 0.05 }}
+                  whileHover={{ y: -3 }}
+                  className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 relative shadow-xs"
+                >
+                  <span className="text-2xl font-black text-blue-600/30 dark:text-blue-400/20 mb-3 block">
+                    {step.num}
+                  </span>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">
+                    {step.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    {step.desc}
+                  </p>
+                </motion.div>
+              ))}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </section>
 
       {/* About & Trust Section */}
       <section id="about" className="py-20 max-w-7xl mx-auto px-4 sm:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div>
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-xs font-semibold mb-4 border border-emerald-200 dark:border-emerald-800">
               <ShieldCheck className="w-3.5 h-3.5" />
               Accreditation & Compliance Ready
@@ -466,22 +555,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
             </ul>
 
             <div className="mt-8 flex items-center gap-4">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={onOpenRegister}
-                className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors shadow-xs"
+                className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors shadow-xs cursor-pointer"
               >
                 Join University Portal
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={onOpenLogin}
-                className="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
               >
                 Institutional Login
-              </button>
+              </motion.button>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="p-8 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-950 text-white border border-slate-800 shadow-xl">
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="p-8 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-950 text-white border border-slate-800 shadow-xl"
+          >
             <h3 className="text-xl font-bold mb-4">Secure Authentication Guidelines</h3>
             <p className="text-xs text-slate-300 mb-6 leading-relaxed">
               All access to administrative, faculty, and student portals requires entering valid institutional credentials and secure authentication.
@@ -524,7 +623,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
