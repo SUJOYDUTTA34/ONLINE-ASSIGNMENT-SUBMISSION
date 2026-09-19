@@ -331,7 +331,7 @@ export const storage = {
 
   // Current session user
   getCurrentUserId(): string {
-    return localStorage.getItem(KEYS.CURRENT_USER_ID) || 'user-stu-1'; // Default demo student Alex Morgan
+    return localStorage.getItem(KEYS.CURRENT_USER_ID) || '';
   },
 
   setCurrentUserId(id: string): void {

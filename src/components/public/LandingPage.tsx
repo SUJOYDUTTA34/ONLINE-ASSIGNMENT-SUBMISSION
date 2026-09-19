@@ -208,26 +208,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
 
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <button
-                id="hero-get-started-btn"
-                onClick={onOpenRegister}
-                className="px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-lg shadow-blue-600/25 flex items-center gap-2 transition-all hover:scale-[1.02]"
+                id="hero-student-portal-btn"
+                onClick={() => switchDemoUser('student')}
+                className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all hover:scale-[1.02]"
               >
-                Get Started
-                <ArrowRight className="w-4 h-4" />
+                <GraduationCap className="w-4 h-4" />
+                <span>Open Student Portal</span>
+              </button>
+              <button
+                id="hero-faculty-portal-btn"
+                onClick={() => switchDemoUser('faculty')}
+                className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-600/20 flex items-center gap-2 transition-all hover:scale-[1.02]"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>Open Faculty Portal</span>
               </button>
               <button
                 id="hero-login-btn"
                 onClick={onOpenLogin}
-                className="px-6 py-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                className="px-5 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5"
               >
-                Login to Portal
+                <LogIn className="w-4 h-4 text-slate-500" />
+                <span>Sign In / Custom Login</span>
               </button>
-              <a
-                href="#features"
-                className="px-5 py-3.5 rounded-xl text-slate-600 dark:text-slate-400 font-medium text-sm hover:text-slate-900 dark:hover:text-white transition-colors"
-              >
-                Explore Features ↓
-              </a>
             </div>
           </div>
 

@@ -244,6 +244,51 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           ) : mode === 'login' ? (
             <form onSubmit={handleLogin} className="space-y-4">
+              {/* Quick Demo Fill / Direct Login Chips */}
+              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span>Quick Demo Sign In:</span>
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-normal">Click to fill</span>
+                </p>
+                <div className="grid grid-cols-3 gap-1.5 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginEmail('sujoydutta830@gmail.com');
+                      setLoginPassword('student123');
+                    }}
+                    className="p-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 text-left hover:bg-emerald-100 transition-colors"
+                  >
+                    <p className="font-bold truncate">Student</p>
+                    <p className="text-[9px] opacity-75 truncate">Sujoy Dutta</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginEmail('shovan.roy@faculty.campus.edu');
+                      setLoginPassword('faculty123');
+                    }}
+                    className="p-1.5 rounded-lg border border-blue-200 dark:border-blue-800/60 bg-blue-50/60 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300 text-left hover:bg-blue-100 transition-colors"
+                  >
+                    <p className="font-bold truncate">Faculty</p>
+                    <p className="text-[9px] opacity-75 truncate">Prof. Shovan Roy</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginEmail('admin@campus.edu');
+                      setLoginPassword('admin123');
+                    }}
+                    className="p-1.5 rounded-lg border border-purple-200 dark:border-purple-800/60 bg-purple-50/60 dark:bg-purple-950/30 text-purple-800 dark:text-purple-300 text-left hover:bg-purple-100 transition-colors"
+                  >
+                    <p className="font-bold truncate">Admin</p>
+                    <p className="text-[9px] opacity-75 truncate">Dr. Vance</p>
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Email or Username
@@ -255,14 +300,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     type="text"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder="e.g. alex.morgan@student.campus.edu"
+                    placeholder="e.g. sujoydutta830@gmail.com"
                     className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">
-                  Try demo emails: <span className="font-mono text-blue-600 dark:text-blue-400">admin@campus.edu</span> or <span className="font-mono text-blue-600 dark:text-blue-400">alex.morgan@student.campus.edu</span>
-                </p>
               </div>
 
               <div>

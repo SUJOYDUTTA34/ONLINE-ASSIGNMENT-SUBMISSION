@@ -25,14 +25,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     storage.init();
     const storedUserId = storage.getCurrentUserId();
-    const existing = storage.getUserById(storedUserId);
-    if (existing) {
-      setUser(existing);
+    if (storedUserId) {
+      const existing = storage.getUserById(storedUserId);
+      if (existing && existing.status === 'active') {
+        setUser(existing);
+      } else {
+        setUser(null);
+        storage.setCurrentUserId('');
+      }
     } else {
-      // Fallback to demo student Alex Morgan
-      const fallback = storage.getUsers().find((u) => u.role === 'student') || null;
-      setUser(fallback);
-      if (fallback) storage.setCurrentUserId(fallback.id);
+      setUser(null);
     }
     setIsLoading(false);
   }, []);
