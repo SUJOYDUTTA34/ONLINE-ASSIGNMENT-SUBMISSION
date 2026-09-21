@@ -6,10 +6,31 @@ import { TextBlockAnimation } from "@/components/ui/text-block-animation";
 import { InteractiveHoverButton } from "@/components/ui/interactive-hover-button";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { SonarGrid } from "@/components/ui/sonar-grid";
+import { ShinyButton } from "@/components/ui/shiny-button";
 import { useId, useState } from "react";
+import { ArrowRight, Sparkles, UserPlus, LogIn } from "lucide-react";
 
 export function DemoOne() {
   return <AuthForm />;
+}
+
+export function ShinyButtonDemo() {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-4 p-8 bg-slate-100 dark:bg-slate-900 rounded-2xl">
+      <ShinyButton variant="primary" icon={<Sparkles className="w-4 h-4" />}>
+        Shiny Button
+      </ShinyButton>
+      <ShinyButton variant="dark" icon={<UserPlus className="w-4 h-4" />}>
+        Create Account
+      </ShinyButton>
+      <ShinyButton variant="outline" icon={<LogIn className="w-4 h-4" />}>
+        Sign In
+      </ShinyButton>
+      <ShinyButton variant="emerald" icon={<ArrowRight className="w-4 h-4" />} iconPosition="right">
+        Get Started
+      </ShinyButton>
+    </div>
+  );
 }
 
 export function SonarGridDemo() {

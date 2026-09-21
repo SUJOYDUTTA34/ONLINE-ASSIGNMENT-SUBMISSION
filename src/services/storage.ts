@@ -955,6 +955,7 @@ export const storage = {
     };
     all.unshift(newNotif);
     setItem(KEYS.NOTIFICATIONS, all);
+
     return newNotif;
   },
 
@@ -998,6 +999,7 @@ export const storage = {
     logs.unshift(newLog);
     // Keep max 500 logs
     setItem(KEYS.AUDIT_LOGS, logs.slice(0, 500));
+
     return newLog;
   },
 

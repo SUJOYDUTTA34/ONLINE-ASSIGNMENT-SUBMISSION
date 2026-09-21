@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../services/storage';
 import { PasswordStrength } from '@/components/ui/password-strength';
+import { ShinyButton } from '@/components/ui/shiny-button';
 import {
   Mail,
   Lock,
@@ -261,17 +262,20 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             </div>
           </div>
 
-          <button
+          <ShinyButton
+            id="premium-proceed-btn"
             type="button"
+            variant="dark"
             onClick={() => {
               if (onSuccess) onSuccess();
               if (onClose) onClose();
             }}
-            className="w-full py-3.5 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs sm:text-sm font-semibold shadow-md hover:bg-black dark:hover:bg-neutral-100 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+            icon={<ArrowRight className="w-4 h-4" />}
+            iconPosition="right"
+            className="w-full mt-2"
           >
-            <span>Proceed to Workspace</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+            Proceed to Workspace
+          </ShinyButton>
         </motion.div>
       ) : mode === 'login' ? (
         /* Login Form */
@@ -345,21 +349,16 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           </div>
 
           {/* Submit Button */}
-          <button
+          <ShinyButton
             id="premium-login-submit-btn"
             type="submit"
+            variant="dark"
             disabled={loading}
-            className="w-full py-3.5 px-4 rounded-2xl bg-[#18181b] dark:bg-white text-white dark:text-[#18181b] font-semibold text-xs sm:text-sm shadow-md hover:bg-black dark:hover:bg-neutral-100 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer mt-3 disabled:opacity-50"
+            className="w-full mt-3"
+            icon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}
           >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Signing in...</span>
-              </>
-            ) : (
-              <span>Sign In</span>
-            )}
-          </button>
+            {loading ? 'Signing in...' : 'Sign In'}
+          </ShinyButton>
 
           {/* Bottom Switch Link */}
           <div className="pt-4 text-center">
@@ -568,21 +567,16 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           )}
 
           {/* Submit Registration Button */}
-          <button
+          <ShinyButton
             id="premium-register-submit-btn"
             type="submit"
+            variant="dark"
             disabled={loading}
-            className="w-full py-3.5 px-4 rounded-2xl bg-[#18181b] dark:bg-white text-white dark:text-[#18181b] font-semibold text-xs sm:text-sm shadow-md hover:bg-black dark:hover:bg-neutral-100 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer mt-3 disabled:opacity-50"
+            className="w-full mt-3"
+            icon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}
           >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Creating Account...</span>
-              </>
-            ) : (
-              <span>Create Account</span>
-            )}
-          </button>
+            {loading ? 'Creating Account...' : 'Create Account'}
+          </ShinyButton>
 
           {/* Bottom Switch Link */}
           <div className="pt-3 text-center">

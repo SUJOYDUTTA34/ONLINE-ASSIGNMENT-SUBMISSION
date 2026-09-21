@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { PasswordStrength } from '@/components/ui/password-strength';
+import { ShinyButton } from '@/components/ui/shiny-button';
 import { useAuth } from '../../context/AuthContext';
 import { X, Mail, KeyRound, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 
@@ -152,14 +153,16 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                       />
                     </div>
                   </div>
-                  <button
+                  <ShinyButton
                     type="submit"
+                    variant="primary"
                     disabled={loading}
-                    className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                    icon={<ArrowRight className="w-4 h-4" />}
+                    iconPosition="right"
+                    className="w-full mt-2"
                   >
                     {loading ? 'Sending Code...' : 'Send Verification Code'}
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+                  </ShinyButton>
                 </motion.form>
               )}
 
@@ -190,12 +193,13 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                       required
                     />
                   </div>
-                  <button
+                  <ShinyButton
                     type="submit"
-                    className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs cursor-pointer"
+                    variant="primary"
+                    className="w-full mt-2"
                   >
                     Verify Code & Continue
-                  </button>
+                  </ShinyButton>
                 </motion.form>
               )}
 
@@ -242,14 +246,15 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                       required
                     />
                   </div>
-                  <button
+                  <ShinyButton
                     type="submit"
+                    variant="emerald"
                     disabled={loading}
-                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                    icon={<CheckCircle2 className="w-4 h-4" />}
+                    className="w-full mt-2"
                   >
                     {loading ? 'Updating...' : 'Update Password & Return to Login'}
-                    <CheckCircle2 className="w-4 h-4" />
-                  </button>
+                  </ShinyButton>
                 </motion.form>
               )}
             </AnimatePresence>

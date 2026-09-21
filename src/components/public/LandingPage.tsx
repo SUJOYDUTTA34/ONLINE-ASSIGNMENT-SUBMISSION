@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../services/storage';
 import { TextBlockAnimation } from '@/components/ui/text-block-animation';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
+import { ShinyButton } from '@/components/ui/shiny-button';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { SonarGrid } from '@/components/ui/sonar-grid';
 import academicLogo from '../../assets/images/academic_crest_logo_1789753031183.jpg';
@@ -151,25 +152,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
             </a>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
+          <div className="flex items-center gap-2 sm:gap-3">
+            <ShinyButton
               id="landing-login-btn"
               type="button"
+              variant="outline"
+              size="responsive"
               onClick={onOpenLogin}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+              icon={<LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
             >
-              <LogIn className="w-4 h-4" />
               Sign In
-            </button>
-            <button
+            </ShinyButton>
+            <ShinyButton
               id="landing-get-started-btn"
               type="button"
+              variant="primary"
+              size="responsive"
               onClick={onOpenRegister}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/30 transition-all hover:scale-[1.02] cursor-pointer"
+              icon={<UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
             >
-              <UserPlus className="w-4 h-4" />
               Create Account
-            </button>
+            </ShinyButton>
           </div>
         </div>
       </nav>
@@ -233,31 +236,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35, duration: 0.5 }}
-              className="mt-8 flex flex-wrap items-center justify-center gap-4"
+              className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4"
             >
-              <InteractiveHoverButton
+              <ShinyButton
                 id="hero-student-portal-btn"
+                variant="emerald"
+                size="responsive"
                 onClick={onOpenRegister}
-                className="bg-emerald-600 dark:bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-700 shadow-md shadow-emerald-600/20"
+                icon={<GraduationCap className="w-4 h-4" />}
               >
                 Student Registration
-              </InteractiveHoverButton>
+              </ShinyButton>
 
-              <InteractiveHoverButton
+              <ShinyButton
                 id="hero-faculty-portal-btn"
+                variant="primary"
+                size="responsive"
                 onClick={onOpenLogin}
-                className="bg-blue-600 dark:bg-blue-600 text-white border-blue-500 hover:bg-blue-700 shadow-md shadow-blue-600/20"
+                icon={<BookOpen className="w-4 h-4" />}
               >
                 Faculty Sign In
-              </InteractiveHoverButton>
-
-              <InteractiveHoverButton
-                id="hero-login-btn"
-                onClick={onOpenLogin}
-                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
-              >
-                Sign In to Portal
-              </InteractiveHoverButton>
+              </ShinyButton>
             </motion.div>
           </motion.div>
 
@@ -562,19 +561,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
               ))}
             </ul>
 
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <InteractiveHoverButton
+            <div className="mt-8 flex flex-wrap items-center gap-3 sm:gap-4">
+              <ShinyButton
+                id="about-join-portal-btn"
+                variant="primary"
+                size="responsive"
                 onClick={onOpenRegister}
-                className="bg-blue-600 dark:bg-blue-600 text-white border-blue-500 hover:bg-blue-700 shadow-md shadow-blue-600/20"
+                icon={<UserPlus className="w-4 h-4" />}
               >
                 Join University Portal
-              </InteractiveHoverButton>
-              <InteractiveHoverButton
+              </ShinyButton>
+              <ShinyButton
+                id="about-institutional-login-btn"
+                variant="outline"
+                size="responsive"
                 onClick={onOpenLogin}
-                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                icon={<LogIn className="w-4 h-4" />}
               >
                 Institutional Login
-              </InteractiveHoverButton>
+              </ShinyButton>
             </div>
           </motion.div>
 
