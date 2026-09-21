@@ -497,7 +497,13 @@ export function validateUploadedFile(
 
   // 2. Whitelist match (Exact match, never substring)
   const normalizedAllowed = allowedTypes.map((t) => t.toLowerCase().replace(/^\./, '').trim());
-  const isAllowed = normalizedAllowed.includes(ext);
+  const acceptsAll =
+    normalizedAllowed.includes('*') ||
+    normalizedAllowed.includes('all') ||
+    normalizedAllowed.includes('*.*') ||
+    normalizedAllowed.length === 0;
+
+  const isAllowed = acceptsAll || normalizedAllowed.includes(ext);
 
   if (!isAllowed) {
     return {

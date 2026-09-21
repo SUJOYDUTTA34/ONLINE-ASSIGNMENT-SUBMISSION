@@ -23,6 +23,7 @@ import {
 interface StudentDashboardProps {
   onSelectAssignment: (assignment: Assignment) => void;
   onOpenSubmitModal: (assignment: Assignment) => void;
+  onOpenQuickSubmit: () => void;
   onViewSubmissionsTab: () => void;
   onViewGradesTab: () => void;
 }
@@ -30,6 +31,7 @@ interface StudentDashboardProps {
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   onSelectAssignment,
   onOpenSubmitModal,
+  onOpenQuickSubmit,
   onViewSubmissionsTab,
   onViewGradesTab,
 }) => {
@@ -92,26 +94,36 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              id="student-view-grades-cta"
-              onClick={onViewGradesTab}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-white transition-all backdrop-blur-xs flex items-center gap-2 cursor-pointer"
+              id="student-quick-submit-cta"
+              onClick={onOpenQuickSubmit}
+              className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-emerald-500/25 flex items-center gap-2 cursor-pointer"
             >
-              <Award className="w-4 h-4 text-amber-300" />
-              View Gradebook
+              <UploadCloud className="w-4 h-4 text-slate-950" />
+              + Submit Assignment
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               id="student-view-submissions-cta"
               onClick={onViewSubmissionsTab}
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white transition-all shadow-md shadow-blue-600/30 flex items-center gap-2 cursor-pointer"
+              className="px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white transition-all shadow-md shadow-blue-600/30 flex items-center gap-2 cursor-pointer"
             >
-              <UploadCloud className="w-4 h-4" />
-              My Submissions
+              <FileText className="w-4 h-4" />
+              Submissions
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              id="student-view-grades-cta"
+              onClick={onViewGradesTab}
+              className="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-white transition-all backdrop-blur-xs flex items-center gap-2 cursor-pointer"
+            >
+              <Award className="w-4 h-4 text-amber-300" />
+              Gradebook
             </motion.button>
           </div>
         </div>
@@ -230,9 +242,19 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 Track your due dates and submission statuses
               </p>
             </div>
-            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-lg">
-              {allAssignments.length} Assignments
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                id="dashboard-table-submit-btn"
+                onClick={onOpenQuickSubmit}
+                className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+              >
+                <UploadCloud className="w-3.5 h-3.5" />
+                Submit Assignment
+              </button>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
+                {allAssignments.length} Assignments
+              </span>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -329,11 +351,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                               <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                onClick={() => onOpenSubmitModal(asg)}
-                                className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-1 shadow-xs cursor-pointer"
+                                onClick={() => {
+                                  onOpenSubmitModal(asg);
+                                  document.getElementById('assignmentFile')?.click();
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1 shadow-sm cursor-pointer min-h-[36px]"
                               >
-                                <UploadCloud className="w-3.5 h-3.5" />
-                                {submission ? 'Resubmit' : 'Submit'}
+                                <span>📄 {submission ? 'Resubmit' : 'Submit'}</span>
                               </motion.button>
                             )}
                           </div>

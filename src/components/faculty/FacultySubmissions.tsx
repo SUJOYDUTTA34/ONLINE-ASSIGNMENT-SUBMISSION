@@ -14,6 +14,7 @@ import {
   Clock,
   Receipt,
   FileSpreadsheet,
+  FileText,
 } from 'lucide-react';
 
 interface FacultySubmissionsProps {
@@ -81,6 +82,13 @@ export const FacultySubmissions: React.FC<FacultySubmissionsProps> = ({
   };
 
   const handleDownloadFile = (s: Submission) => {
+    if (s.storedFileName) {
+      const a = document.createElement('a');
+      a.href = `/uploads/assignments/${s.storedFileName}`;
+      a.download = s.fileName;
+      a.click();
+      return;
+    }
     const blob = new Blob([`Coursework file for ${s.fileName}\nSubmitted by ${s.studentName}`], {
       type: s.fileType || 'application/octet-stream',
     });
@@ -298,6 +306,18 @@ export const FacultySubmissions: React.FC<FacultySubmissionsProps> = ({
                         >
                           <Receipt className="w-3.5 h-3.5" />
                         </button>
+
+                        {s.storedFileName && (
+                          <a
+                            href={`/uploads/assignments/${s.storedFileName}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center"
+                            title="View PDF Preview"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-red-500" />
+                          </a>
+                        )}
 
                         <button
                           onClick={() => handleDownloadFile(s)}

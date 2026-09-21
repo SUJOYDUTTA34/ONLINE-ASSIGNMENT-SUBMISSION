@@ -13,6 +13,7 @@ import { StudentGrades } from '../student/StudentGrades';
 import { StudentCourses } from '../student/StudentCourses';
 import { SubmitAssignmentModal } from '../student/SubmitAssignmentModal';
 import { AssignmentDetailsModal } from '../student/AssignmentDetailsModal';
+import { SelectAssignmentModal } from '../student/SelectAssignmentModal';
 
 // Faculty Views
 import { FacultyDashboard } from '../faculty/FacultyDashboard';
@@ -49,6 +50,7 @@ export const Layout: React.FC<LayoutProps> = ({ onLogoutToLanding }) => {
   // Student Modals
   const [submitModalAssignment, setSubmitModalAssignment] = useState<Assignment | null>(null);
   const [detailsModalAssignment, setDetailsModalAssignment] = useState<Assignment | null>(null);
+  const [selectAssignmentModalOpen, setSelectAssignmentModalOpen] = useState(false);
 
   // Faculty Modals & State
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
@@ -89,6 +91,7 @@ export const Layout: React.FC<LayoutProps> = ({ onLogoutToLanding }) => {
             <StudentDashboard
               onSelectAssignment={(asg: Assignment) => setDetailsModalAssignment(asg)}
               onOpenSubmitModal={(asg: Assignment) => setSubmitModalAssignment(asg)}
+              onOpenQuickSubmit={() => setSelectAssignmentModalOpen(true)}
               onViewSubmissionsTab={() => setActiveTab('submissions')}
               onViewGradesTab={() => setActiveTab('grades')}
             />
@@ -106,6 +109,7 @@ export const Layout: React.FC<LayoutProps> = ({ onLogoutToLanding }) => {
             <StudentAssignments
               onSelectAssignment={(asg: Assignment) => setDetailsModalAssignment(asg)}
               onOpenSubmitModal={(asg: Assignment) => setSubmitModalAssignment(asg)}
+              onOpenQuickSubmit={() => setSelectAssignmentModalOpen(true)}
             />
           );
         case 'my-submissions':
@@ -113,6 +117,7 @@ export const Layout: React.FC<LayoutProps> = ({ onLogoutToLanding }) => {
           return (
             <StudentSubmissions
               onOpenSubmitModal={(asg: Assignment) => setSubmitModalAssignment(asg)}
+              onOpenQuickSubmit={() => setSelectAssignmentModalOpen(true)}
             />
           );
         case 'grades':
@@ -128,6 +133,7 @@ export const Layout: React.FC<LayoutProps> = ({ onLogoutToLanding }) => {
             <StudentDashboard
               onSelectAssignment={(asg: Assignment) => setDetailsModalAssignment(asg)}
               onOpenSubmitModal={(asg: Assignment) => setSubmitModalAssignment(asg)}
+              onOpenQuickSubmit={() => setSelectAssignmentModalOpen(true)}
               onViewSubmissionsTab={() => setActiveTab('submissions')}
               onViewGradesTab={() => setActiveTab('grades')}
             />
@@ -313,6 +319,14 @@ export const Layout: React.FC<LayoutProps> = ({ onLogoutToLanding }) => {
         onClose={() => setDetailsModalAssignment(null)}
         onOpenSubmit={(asg: Assignment) => {
           setDetailsModalAssignment(null);
+          setSubmitModalAssignment(asg);
+        }}
+      />
+
+      <SelectAssignmentModal
+        isOpen={selectAssignmentModalOpen}
+        onClose={() => setSelectAssignmentModalOpen(false)}
+        onSelectAssignmentForSubmission={(asg: Assignment) => {
           setSubmitModalAssignment(asg);
         }}
       />

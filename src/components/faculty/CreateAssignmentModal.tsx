@@ -56,9 +56,9 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
   );
 
   // Allowed Formats
-  const availableFormats = ['pdf', 'docx', 'pptx', 'zip', 'txt', 'py', 'java', 'cpp'];
+  const availableFormats = ['all', 'pdf', 'docx', 'pptx', 'xlsx', 'csv', 'zip', 'txt', 'png', 'jpg', 'py', 'java', 'cpp'];
   const [allowedFileTypes, setAllowedFileTypes] = useState<string[]>(
-    initialAssignment?.allowedFileTypes || ['pdf', 'zip']
+    initialAssignment?.allowedFileTypes || ['all', 'pdf', 'docx', 'zip']
   );
 
   const [maxFileSizeMb, setMaxFileSizeMb] = useState(initialAssignment?.maxFileSizeMb || 25);
@@ -368,7 +368,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                           : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                       }`}
                     >
-                      .{fmt}
+                      {fmt === 'all' ? '★ ALL (ANY FILE)' : `.${fmt}`}
                     </button>
                   );
                 })}

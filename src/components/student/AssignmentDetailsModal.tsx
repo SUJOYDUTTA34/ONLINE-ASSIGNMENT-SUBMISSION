@@ -238,6 +238,9 @@ export const AssignmentDetailsModal: React.FC<AssignmentDetailsModalProps> = ({
               onClick={() => {
                 onClose();
                 onOpenSubmit(assignment);
+                setTimeout(() => {
+                  document.getElementById('assignmentFile')?.click();
+                }, 100);
               }}
               className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-600/20 flex items-center gap-2 transition-all hover:scale-[1.01]"
             >

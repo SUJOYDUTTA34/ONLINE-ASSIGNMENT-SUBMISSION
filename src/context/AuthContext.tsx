@@ -335,7 +335,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       action: 'PASSWORD_RESET_REQUESTED',
       entityType: 'Auth',
       entityId: target.id,
-      details: `Single-use recovery token issued (Expires in 15 minutes at ${new Date(expiresAt).toLocaleTimeString()})`,
+      details: `Single-use recovery token issued (Expires in 15 minutes at ${new Date(expiresAt || Date.now()).toLocaleTimeString()})`,
       ipAddress: '127.0.0.1',
     });
 

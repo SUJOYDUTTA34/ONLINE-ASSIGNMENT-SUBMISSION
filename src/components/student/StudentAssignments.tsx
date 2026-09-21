@@ -19,11 +19,13 @@ import {
 interface StudentAssignmentsProps {
   onSelectAssignment: (assignment: Assignment) => void;
   onOpenSubmitModal: (assignment: Assignment) => void;
+  onOpenQuickSubmit?: () => void;
 }
 
 export const StudentAssignments: React.FC<StudentAssignmentsProps> = ({
   onSelectAssignment,
   onOpenSubmitModal,
+  onOpenQuickSubmit,
 }) => {
   const { user } = useAuth();
   if (!user) return null;
@@ -85,8 +87,20 @@ export const StudentAssignments: React.FC<StudentAssignmentsProps> = ({
             Browse and submit active coursework for all your enrolled courses
           </p>
         </div>
-        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
-          Showing {filtered.length} of {assignments.length} assignments
+        <div className="flex items-center gap-3">
+          {onOpenQuickSubmit && (
+            <button
+              id="student-assignments-page-submit-btn"
+              onClick={onOpenQuickSubmit}
+              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+            >
+              <UploadCloud className="w-4 h-4" />
+              + Submit Assignment
+            </button>
+          )}
+          <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800">
+            Showing {filtered.length} of {assignments.length} assignments
+          </div>
         </div>
       </div>
 
@@ -245,11 +259,13 @@ export const StudentAssignments: React.FC<StudentAssignmentsProps> = ({
 
                   {(!submission || asg.allowResubmission) && (
                     <button
-                      onClick={() => onOpenSubmitModal(asg)}
-                      className="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs transition-colors"
+                      onClick={() => {
+                        onOpenSubmitModal(asg);
+                        document.getElementById('assignmentFile')?.click();
+                      }}
+                      className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors min-h-[44px]"
                     >
-                      <UploadCloud className="w-3.5 h-3.5" />
-                      {submission ? 'Resubmit' : 'Submit'}
+                      <span>📄 {submission ? 'Resubmit Assignment' : 'Submit Assignment'}</span>
                     </button>
                   )}
                 </div>

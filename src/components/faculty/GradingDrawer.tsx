@@ -68,6 +68,13 @@ export const GradingDrawer: React.FC<GradingDrawerProps> = ({
   const effectiveMarks = Math.max(0, Number((marks - penaltyDeduction).toFixed(1)));
 
   const handleDownloadStudentFile = () => {
+    if (submission.storedFileName) {
+      const a = document.createElement('a');
+      a.href = `/uploads/assignments/${submission.storedFileName}`;
+      a.download = submission.fileName;
+      a.click();
+      return;
+    }
     const blob = new Blob(
       [`Student submission for ${submission.fileName}\nCourse: ${submission.courseCode}\nStudent: ${submission.studentName} (${submission.studentIdNumber})`],
       { type: submission.fileType || 'application/octet-stream' }

@@ -109,6 +109,7 @@ export interface Submission {
   studentName: string;
   studentIdNumber: string;
   fileName: string;
+  storedFileName?: string;
   fileSize: string;
   fileType: string;
   fileData?: string;
