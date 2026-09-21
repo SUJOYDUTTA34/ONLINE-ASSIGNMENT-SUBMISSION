@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { PasswordStrength } from '@/components/ui/password-strength';
 import { useAuth } from '../../context/AuthContext';
 import { X, Mail, KeyRound, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 
@@ -137,7 +138,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                   </p>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Institutional Email
+                      Registered Email Address (Gmail or College Email)
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -145,7 +146,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="e.g. alex.morgan@student.campus.edu"
+                        placeholder="e.g. name@gmail.com"
                         className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                         required
                       />
@@ -221,6 +222,13 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                       required
                     />
                   </div>
+
+                  {newPassword.length > 0 && (
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
+                      <PasswordStrength value={newPassword} showRules={true} />
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Confirm New Password

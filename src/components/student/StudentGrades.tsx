@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../services/storage';
+import { ProgressBar } from '@/components/ui/progress-bar';
 import {
   Award,
   TrendingUp,
@@ -276,11 +277,19 @@ export const StudentGrades: React.FC = () => {
                       <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
                         {c.gradedCount} items
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 min-w-[140px]">
                         {c.average !== null ? (
-                          <span className="font-mono font-bold text-slate-900 dark:text-white">
-                            {c.average}%
-                          </span>
+                          <div className="space-y-1">
+                            <span className="font-mono font-bold text-slate-900 dark:text-white">
+                              {c.average}%
+                            </span>
+                            <ProgressBar
+                              value={c.average}
+                              size="sm"
+                              variant={c.average >= 85 ? 'success' : c.average >= 70 ? 'primary' : 'warning'}
+                              shimmer={false}
+                            />
+                          </div>
                         ) : (
                           <span className="text-slate-400">—</span>
                         )}

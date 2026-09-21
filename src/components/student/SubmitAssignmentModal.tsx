@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { storage } from '../../services/storage';
 import confetti from 'canvas-confetti';
+import { ProgressBar } from '@/components/ui/progress-bar';
 import {
   X,
   UploadCloud,
@@ -307,18 +308,14 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
 
             {/* Upload Progress Bar (when active) */}
             {isUploading && (
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                  <span>Uploading file to secure server...</span>
-                  <span className="font-mono font-bold">{uploadProgress}%</span>
-                </div>
-                <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-600 transition-all duration-200"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
-                </div>
-              </div>
+              <ProgressBar
+                value={uploadProgress}
+                label="Uploading file to secure academic server..."
+                showValue
+                variant="primary"
+                shimmer
+                size="md"
+              />
             )}
 
             {/* Comments Field */}

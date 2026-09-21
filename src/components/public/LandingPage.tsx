@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../services/storage';
+import { TextBlockAnimation } from '@/components/ui/text-block-animation';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
+import { ProgressBar } from '@/components/ui/progress-bar';
+import { SonarGrid } from '@/components/ui/sonar-grid';
 import academicLogo from '../../assets/images/academic_crest_logo_1789753031183.jpg';
 import {
   GraduationCap,
@@ -104,21 +108,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-600 selection:text-white">
-      {/* Top Academic Bar */}
-      <div className="bg-slate-900 text-slate-300 text-xs py-2 px-4 border-b border-slate-800">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="font-medium text-white">University Academic Portal 2026–2027</span>
-            <span className="text-slate-500">•</span>
-            <span className="text-slate-400 hidden sm:inline">Fall Semester Secure Authentication Gateway Active</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-emerald-400 text-[11px] font-medium">Secure SSL Encrypted</span>
-          </div>
-        </div>
-      </div>
-
       {/* Main Navbar */}
       <nav className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between">
@@ -185,14 +174,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {/* Hero Section with Interactive SonarGrid */}
       <section className="relative overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-28">
-        <div className="absolute inset-0 -z-10 flex items-center justify-center">
+        <SonarGrid
+          spacing={28}
+          dotSize={1.2}
+          enableClick
+          enableHover={false}
+          ambientInterval={4500}
+          className="absolute inset-0 z-0"
+        />
+        <div className="absolute inset-0 -z-5 flex items-center justify-center pointer-events-none">
           <div className="w-[600px] h-[600px] bg-blue-500/10 dark:bg-blue-600/5 rounded-full blur-3xl" />
           <div className="w-[400px] h-[400px] bg-indigo-500/10 dark:bg-indigo-600/5 rounded-full blur-2xl -translate-y-24" />
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
@@ -209,14 +206,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
               Next-Gen Academic Submission Architecture
             </motion.div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.5 }}
-              className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.1]"
-            >
-              Smart & Simple Online Assignment Submission
-            </motion.h1>
+            <div className="flex flex-col items-center justify-center">
+              <TextBlockAnimation
+                text={[
+                  'Smart & Simple Online',
+                  'Assignment Submission',
+                ]}
+                blockColor="#2563eb"
+                duration={0.65}
+                stagger={0.2}
+                textClassName="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.15]"
+                className="items-center"
+              />
+            </div>
 
             <motion.p
               initial={{ opacity: 0, y: 15 }}
@@ -231,38 +233,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35, duration: 0.5 }}
-              className="mt-8 flex flex-wrap items-center justify-center gap-3"
+              className="mt-8 flex flex-wrap items-center justify-center gap-4"
             >
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+              <InteractiveHoverButton
                 id="hero-student-portal-btn"
                 onClick={onOpenRegister}
-                className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all cursor-pointer"
+                className="bg-emerald-600 dark:bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-700 shadow-md shadow-emerald-600/20"
               >
-                <GraduationCap className="w-4 h-4" />
-                <span>Student Registration</span>
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+                Student Registration
+              </InteractiveHoverButton>
+
+              <InteractiveHoverButton
                 id="hero-faculty-portal-btn"
                 onClick={onOpenLogin}
-                className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-600/20 flex items-center gap-2 transition-all cursor-pointer"
+                className="bg-blue-600 dark:bg-blue-600 text-white border-blue-500 hover:bg-blue-700 shadow-md shadow-blue-600/20"
               >
-                <BookOpen className="w-4 h-4" />
-                <span>Faculty Sign In</span>
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+                Faculty Sign In
+              </InteractiveHoverButton>
+
+              <InteractiveHoverButton
                 id="hero-login-btn"
                 onClick={onOpenLogin}
-                className="px-5 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 cursor-pointer"
+                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
               >
-                <LogIn className="w-4 h-4 text-slate-500" />
-                <span>Sign In to Portal</span>
-              </motion.button>
+                Sign In to Portal
+              </InteractiveHoverButton>
             </motion.div>
           </motion.div>
 
@@ -335,8 +330,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
                       <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold">Graded: 19.5/20</span>
                     </div>
                     <h4 className="text-sm font-bold text-slate-900 dark:text-white">Binary Search Trees & AVL</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Status: Submitted On Time</p>
-                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+                    <div className="my-2.5">
+                      <ProgressBar
+                        value={97.5}
+                        variant="success"
+                        size="sm"
+                        label={<span className="text-[10px] text-slate-400">Score & Integrity Met</span>}
+                        showValue
+                      />
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
                       <span className="text-xs text-emerald-600 font-medium">Feedback Available</span>
                       <span className="text-xs font-semibold text-blue-600 hover:underline">View Receipt</span>
                     </div>
@@ -403,9 +406,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
           <h2 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
             Enterprise Academic Features
           </h2>
-          <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-2">
-            Engineered for Modern Universities
-          </p>
+          <div className="flex justify-center mt-2">
+            <TextBlockAnimation
+              text="Engineered for Modern Universities"
+              blockColor="#4f46e5"
+              textClassName="text-3xl font-extrabold text-slate-900 dark:text-white"
+              className="items-center"
+            />
+          </div>
           <p className="text-slate-600 dark:text-slate-400 text-sm mt-3">
             Every feature designed to eliminate submission friction, prevent lost assignments, and ensure transparent grading.
           </p>
@@ -554,23 +562,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
               ))}
             </ul>
 
-            <div className="mt-8 flex items-center gap-4">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <InteractiveHoverButton
                 onClick={onOpenRegister}
-                className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors shadow-xs cursor-pointer"
+                className="bg-blue-600 dark:bg-blue-600 text-white border-blue-500 hover:bg-blue-700 shadow-md shadow-blue-600/20"
               >
                 Join University Portal
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+              </InteractiveHoverButton>
+              <InteractiveHoverButton
                 onClick={onOpenLogin}
-                className="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
               >
                 Institutional Login
-              </motion.button>
+              </InteractiveHoverButton>
             </div>
           </motion.div>
 
@@ -594,7 +598,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
                   </div>
                   <div>
                     <p className="text-xs font-bold">Student Portal Access</p>
-                    <p className="text-[11px] text-slate-300">Requires Student ID & Institutional Email (e.g. student@campus.edu)</p>
+                    <p className="text-[11px] text-slate-300">Requires Student ID & Email (e.g. name@gmail.com or student ID)</p>
                   </div>
                 </div>
               </div>
@@ -628,8 +632,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
       </section>
 
       {/* Footer */}
-      <footer className="bg-slate-900 text-slate-400 text-xs py-12 border-t border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+      <footer className="relative bg-slate-900 text-slate-400 text-xs py-12 border-t border-slate-800 overflow-hidden">
+        <SonarGrid
+          spacing={32}
+          dotSize={1.1}
+          dotColor="rgba(255, 255, 255, 0.07)"
+          ringColor="rgba(96, 165, 250, "
+          enableClick
+          enableHover={false}
+          ambientInterval={6000}
+          className="absolute inset-0 z-0"
+        />
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-7 h-7 rounded-lg overflow-hidden border border-slate-700 bg-white flex items-center justify-center">

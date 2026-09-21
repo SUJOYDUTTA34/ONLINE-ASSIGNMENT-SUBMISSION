@@ -51,7 +51,7 @@ export const INITIAL_USERS: User[] = [
     role: 'admin',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     status: 'active',
-    phone: '+1 (555) 234-5670',
+    phone: '+91 98300 12340',
     departmentId: 'dept-1',
     departmentName: 'Computer Science & Engineering',
     employeeIdNumber: 'ADM-901',

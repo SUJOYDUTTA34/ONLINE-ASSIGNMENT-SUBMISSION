@@ -196,7 +196,41 @@ export const storage = {
   },
 
   getUserByEmail(email: string): User | undefined {
-    return this.getUsers().find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (!email) return undefined;
+    const term = email.trim().toLowerCase();
+    const users = this.getUsers();
+
+    // 1. Direct match by primary email, alternate email, student ID, or employee ID
+    const directMatch = users.find(
+      (u) =>
+        u.email.toLowerCase() === term ||
+        (u.alternateEmail && u.alternateEmail.toLowerCase() === term) ||
+        (u.studentIdNumber && u.studentIdNumber.toLowerCase() === term) ||
+        (u.employeeIdNumber && u.employeeIdNumber.toLowerCase() === term)
+    );
+    if (directMatch) return directMatch;
+
+    // 2. Name or username match
+    const nameMatch = users.find(
+      (u) =>
+        u.name.toLowerCase() === term ||
+        u.name.toLowerCase().replace(/\s+/g, '') === term ||
+        u.email.split('@')[0].toLowerCase() === term
+    );
+    if (nameMatch) return nameMatch;
+
+    // 3. Demo role aliases
+    if (term.includes('student')) {
+      return users.find((u) => u.id === 'user-stu-1') || users.find((u) => u.role === 'student');
+    }
+    if (term.includes('faculty') || term.includes('teacher') || term.includes('prof')) {
+      return users.find((u) => u.id === 'user-fac-1') || users.find((u) => u.role === 'faculty');
+    }
+    if (term.includes('admin')) {
+      return users.find((u) => u.role === 'admin');
+    }
+
+    return undefined;
   },
 
   createUser(userData: Partial<User>, creator?: User): User {

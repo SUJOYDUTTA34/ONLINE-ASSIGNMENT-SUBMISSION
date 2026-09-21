@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../services/storage';
 import { Assignment, Submission } from '../../types';
+import { ProgressBar } from '@/components/ui/progress-bar';
 import {
   GraduationCap,
   FileText,
@@ -181,6 +182,35 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           );
         })}
       </div>
+
+      {/* Coursework Completion Progress Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.15 }}
+        className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+              Term Coursework Completion Progress
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {submittedCount} of {totalAssignments} assignments submitted across all enrolled courses
+            </p>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 self-start sm:self-auto">
+            {totalAssignments > 0 ? `${Math.round((submittedCount / totalAssignments) * 100)}% Completed` : 'No Assignments'}
+          </span>
+        </div>
+
+        <ProgressBar
+          value={totalAssignments > 0 ? Math.round((submittedCount / totalAssignments) * 100) : 0}
+          variant="gradient"
+          size="md"
+          shimmer
+        />
+      </motion.div>
 
       {/* Grid: Upcoming Assignments & Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

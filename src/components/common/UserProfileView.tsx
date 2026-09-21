@@ -32,7 +32,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigateToSe
 
   const [name, setName] = useState(user.name);
   const [email] = useState(user.email);
-  const [phone, setPhone] = useState(user.phone || '+1 (555) 234-5678');
+  const [phone, setPhone] = useState(user.phone || '+91 98765 43210');
   const [address, setAddress] = useState(user.address || 'Academic Hall 4B, Campus West');
   const [bio, setBio] = useState(
     user.bio ||
@@ -280,17 +280,27 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigateToSe
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Contact Phone
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <span>Contact Phone</span>
+                <span className="text-[10px] text-slate-500 font-normal">(India +91)</span>
               </label>
-              <input
-                id="profile-phone-input"
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+1 (555) 000-0000"
-                className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="relative">
+                <div className="absolute left-3 top-2.5 flex items-center gap-1 text-xs text-slate-500 font-medium select-none pointer-events-none">
+                  <span>🇮🇳</span>
+                  <span>+91</span>
+                </div>
+                <input
+                  id="profile-phone-input"
+                  type="tel"
+                  value={phone.replace(/^\+91\s*/, '')}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9\s]/g, '');
+                    setPhone(val ? `+91 ${val}` : '');
+                  }}
+                  placeholder="98765 43210"
+                  className="w-full pl-16 pr-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
 
             <div>
