@@ -26,6 +26,10 @@ import {
   ChevronRight,
   LogIn,
   UserPlus,
+  Mail,
+  Send,
+  LoaderCircle,
+  CircleAlert,
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -35,6 +39,30 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister }) => {
   const [howItWorksRole, setHowItWorksRole] = useState<'student' | 'faculty'>('student');
+  const [contactStatus, setContactStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+
+  const handleContactSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setContactStatus('submitting');
+
+    const form = event.currentTarget;
+    const body = new URLSearchParams();
+    new FormData(form).forEach((value, key) => body.append(key, String(value)));
+
+    try {
+      const response = await fetch('/__forms.html', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      });
+
+      if (!response.ok) throw new Error('Form submission failed');
+      form.reset();
+      setContactStatus('success');
+    } catch {
+      setContactStatus('error');
+    }
+  };
 
   const stats = storage.getSystemStats();
 
@@ -151,6 +179,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
             </a>
             <a href="#about" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               About
+            </a>
+            <a href="#contact" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              Contact
             </a>
           </div>
 
@@ -643,6 +674,96 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
               </div>
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section id="contact" className="relative overflow-hidden border-t border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/60 py-20">
+        <div className="absolute -top-32 right-0 h-80 w-80 rounded-full bg-blue-200/30 blur-3xl dark:bg-blue-900/20" aria-hidden="true" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-10 lg:gap-16 items-start">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="lg:sticky lg:top-28"
+            >
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-xs font-semibold border border-blue-200 dark:border-blue-800 mb-5">
+                <Mail className="w-3.5 h-3.5" />
+                Registrar support desk
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                Send us a message.
+              </h2>
+              <p className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300 max-w-md">
+                Questions about enrolment, submissions, grading, or portal access reach the Scholaris support team here.
+              </p>
+              <div className="mt-8 border-l-2 border-blue-500 pl-5">
+                <p className="text-xs font-bold text-slate-900 dark:text-white">What happens next?</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  Your message is securely recorded in Netlify and forwarded to the configured support inbox.
+                </p>
+              </div>
+            </motion.div>
+
+            <motion.form
+              name="scholaris-contact"
+              method="POST"
+              data-netlify="true"
+              netlify-honeypot="bot-field"
+              onSubmit={handleContactSubmit}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-slate-950/30"
+            >
+              <input type="hidden" name="form-name" value="scholaris-contact" />
+              <input type="hidden" name="subject" value="New Scholaris support message" />
+              <p className="hidden" aria-hidden="true">
+                <label>Do not fill this out: <input name="bot-field" tabIndex={-1} autoComplete="off" /></label>
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                  Your name
+                  <input name="name" type="text" autoComplete="name" required placeholder="Full name" className="mt-2 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-3 text-sm font-normal text-slate-900 dark:text-white outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400" />
+                </label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                  Email address
+                  <input name="email" type="email" autoComplete="email" required placeholder="you@example.com" className="mt-2 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-3 text-sm font-normal text-slate-900 dark:text-white outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400" />
+                </label>
+              </div>
+
+              <label className="mt-5 block text-xs font-bold text-slate-700 dark:text-slate-200">
+                Topic
+                <select name="topic" required defaultValue="" className="mt-2 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-3 text-sm font-normal text-slate-900 dark:text-white outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10">
+                  <option value="" disabled>Select a topic</option>
+                  <option value="Portal access">Portal access</option>
+                  <option value="Assignment submission">Assignment submission</option>
+                  <option value="Grades and feedback">Grades and feedback</option>
+                  <option value="General enquiry">General enquiry</option>
+                </select>
+              </label>
+
+              <label className="mt-5 block text-xs font-bold text-slate-700 dark:text-slate-200">
+                Message
+                <textarea name="message" required minLength={10} rows={5} placeholder="Tell us how we can help…" className="mt-2 w-full resize-y rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-3 text-sm font-normal leading-relaxed text-slate-900 dark:text-white outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400" />
+              </label>
+
+              <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-4">
+                <button type="submit" disabled={contactStatus === 'submitting'} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0">
+                  {contactStatus === 'submitting' ? <LoaderCircle className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {contactStatus === 'submitting' ? 'Sending…' : 'Send message'}
+                </button>
+                <div aria-live="polite" className="text-xs font-medium">
+                  {contactStatus === 'success' && <span className="text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Message sent successfully.</span>}
+                  {contactStatus === 'error' && <span className="text-rose-600 dark:text-rose-400 inline-flex items-center gap-1.5"><CircleAlert className="w-4 h-4" /> Could not send. Please try again.</span>}
+                </div>
+              </div>
+            </motion.form>
+          </div>
         </div>
       </section>
 
