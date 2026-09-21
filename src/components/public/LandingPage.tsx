@@ -110,34 +110,36 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-600 selection:text-white">
       {/* Main Navbar */}
-      <nav className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative w-11 h-11 rounded-xl overflow-hidden shadow-sm border border-slate-200/80 dark:border-slate-700 bg-white flex items-center justify-center p-0.5 group">
+      <nav className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-18 flex items-center justify-between gap-2">
+          {/* Logo & Brand Identity */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl overflow-hidden shadow-xs border border-slate-200/80 dark:border-slate-700 bg-white flex items-center justify-center p-0.5 group shrink-0">
               <img
                 src={academicLogo}
                 alt="Scholaris Academic Crest"
-                className="w-full h-full object-cover rounded-[9px] transition-transform duration-300 group-hover:scale-105"
+                className="w-full h-full object-cover rounded-[7px] sm:rounded-[9px] transition-transform duration-300 group-hover:scale-105"
                 referrerPolicy="no-referrer"
               />
               <svg className="sr-only" aria-hidden="true" viewBox="0 0 24 24">
                 <title>Scholaris Academic Crest</title>
               </svg>
             </div>
-            <div>
-              <span className="text-xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+            <div className="min-w-0">
+              <span className="text-base sm:text-xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1 sm:gap-1.5 leading-none">
                 Scholaris
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 tracking-normal font-sans">
+                <span className="text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 tracking-normal font-sans">
                   Academic
                 </span>
               </span>
-              <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+              <p className="hidden sm:block text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mt-0.5 truncate">
                 Online Assignment Submission System
               </p>
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600 dark:text-slate-300">
+          {/* Desktop Navigation Links */}
+          <div className="hidden md:flex items-center gap-6 lg:gap-8 text-sm font-medium text-slate-600 dark:text-slate-300">
             <a href="#features" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               Features
             </a>
@@ -152,14 +154,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
             </a>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Action Buttons - Fully Responsive on Mobile, Tablet, Laptop, PC */}
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             <ShinyButton
               id="landing-login-btn"
               type="button"
               variant="outline"
-              size="responsive"
+              size="compact"
               onClick={onOpenLogin}
-              icon={<LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+              icon={<LogIn className="w-3.5 h-3.5" />}
+              className="px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs"
             >
               Sign In
             </ShinyButton>
@@ -167,11 +171,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
               id="landing-get-started-btn"
               type="button"
               variant="primary"
-              size="responsive"
+              size="compact"
               onClick={onOpenRegister}
-              icon={<UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+              icon={<UserPlus className="w-3.5 h-3.5" />}
+              className="px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs"
             >
-              Create Account
+              <span className="hidden sm:inline">Create Account</span>
+              <span className="sm:hidden">Register</span>
             </ShinyButton>
           </div>
         </div>
@@ -236,7 +242,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35, duration: 0.5 }}
-              className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4"
+              className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-sm sm:max-w-none mx-auto"
             >
               <ShinyButton
                 id="hero-student-portal-btn"
@@ -244,6 +250,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
                 size="responsive"
                 onClick={onOpenRegister}
                 icon={<GraduationCap className="w-4 h-4" />}
+                className="w-full sm:w-auto"
               >
                 Student Registration
               </ShinyButton>
@@ -254,6 +261,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
                 size="responsive"
                 onClick={onOpenLogin}
                 icon={<BookOpen className="w-4 h-4" />}
+                className="w-full sm:w-auto"
               >
                 Faculty Sign In
               </ShinyButton>
@@ -561,13 +569,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
               ))}
             </ul>
 
-            <div className="mt-8 flex flex-wrap items-center gap-3 sm:gap-4">
+            <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
               <ShinyButton
                 id="about-join-portal-btn"
                 variant="primary"
                 size="responsive"
                 onClick={onOpenRegister}
                 icon={<UserPlus className="w-4 h-4" />}
+                className="w-full sm:w-auto"
               >
                 Join University Portal
               </ShinyButton>
@@ -577,6 +586,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
                 size="responsive"
                 onClick={onOpenLogin}
                 icon={<LogIn className="w-4 h-4" />}
+                className="w-full sm:w-auto"
               >
                 Institutional Login
               </ShinyButton>

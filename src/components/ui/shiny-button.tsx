@@ -13,7 +13,7 @@ export interface ShinyButtonProps
     | 'emerald'
     | 'danger'
     | 'ghost';
-  size?: 'responsive' | 'sm' | 'md' | 'lg' | 'icon';
+  size?: 'responsive' | 'compact' | 'sm' | 'md' | 'lg' | 'icon';
   shimmerColor?: string;
   shimmerDuration?: number;
   icon?: React.ReactNode;
@@ -40,11 +40,13 @@ export const ShinyButton = React.forwardRef<HTMLButtonElement, ShinyButtonProps>
     // Responsive auto-sizing for Mobile, Tablet, Laptop, and PC
     const sizeClasses = {
       responsive:
-        'text-xs sm:text-xs md:text-sm lg:text-sm xl:text-base py-2.5 px-4 sm:py-2.5 sm:px-4.5 md:py-3 md:px-5 lg:py-3 lg:px-6 xl:py-3.5 xl:px-7 min-h-[44px] sm:min-h-[42px] md:min-h-[44px] lg:min-h-[46px] rounded-xl sm:rounded-xl md:rounded-2xl',
-      sm: 'text-xs py-2 px-3.5 min-h-[38px] rounded-xl',
-      md: 'text-xs sm:text-sm py-2.5 px-4.5 min-h-[44px] rounded-xl',
+        'text-xs sm:text-xs md:text-sm lg:text-sm xl:text-base py-2 px-3 sm:py-2.5 sm:px-4.5 md:py-3 md:px-5 lg:py-3 lg:px-6 xl:py-3.5 xl:px-7 min-h-[38px] sm:min-h-[42px] md:min-h-[44px] lg:min-h-[46px] rounded-lg sm:rounded-xl md:rounded-2xl',
+      compact:
+        'text-[11px] sm:text-xs py-1.5 px-2.5 sm:py-2 sm:px-3.5 min-h-[36px] sm:min-h-[38px] rounded-lg sm:rounded-xl',
+      sm: 'text-xs py-1.5 px-3 min-h-[36px] rounded-lg sm:rounded-xl',
+      md: 'text-xs sm:text-sm py-2.5 px-4.5 min-h-[42px] rounded-xl',
       lg: 'text-sm sm:text-base py-3.5 px-6.5 min-h-[48px] rounded-2xl',
-      icon: 'p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl',
+      icon: 'p-2 min-w-[38px] min-h-[38px] sm:min-w-[42px] sm:min-h-[42px] flex items-center justify-center rounded-lg sm:rounded-xl',
     };
 
     // Color theme variants
