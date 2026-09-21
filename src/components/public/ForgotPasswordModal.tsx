@@ -33,7 +33,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     e.preventDefault();
     setError(null);
     if (!email.trim()) {
-      setError('Please enter your email.');
+      setError('Please enter your institutional email.');
       return;
     }
     setLoading(true);
@@ -42,15 +42,15 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     if (res.success) {
       setStep(2);
     } else {
-      setError(res.message || 'Unable to find user.');
+      setError(res.message || 'Unable to process reset request.');
     }
   };
 
   const handleStep2 = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!code || code.trim().length < 4) {
-      setError('Please enter the 6-digit verification code sent to your inbox.');
+    if (!code || code.trim().length !== 6) {
+      setError('Please enter the 6-digit cryptographic verification code.');
       return;
     }
     setStep(3);
@@ -69,7 +69,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     }
 
     setLoading(true);
-    const res = await confirmResetPassword(email, newPassword);
+    const res = await confirmResetPassword(email, code, newPassword);
     setLoading(false);
     if (res.success) {
       onClose();
@@ -176,9 +176,14 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                   onSubmit={handleStep2}
                   className="space-y-4"
                 >
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    We simulated dispatching a 6-digit code to <span className="font-semibold text-slate-800 dark:text-slate-200">{email}</span>. (Demo code: <span className="font-mono font-bold text-blue-600">849201</span>)
-                  </p>
+                  <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 space-y-1">
+                    <p className="text-xs text-blue-900 dark:text-blue-200">
+                      A single-use verification token was dispatched for <span className="font-semibold">{email}</span>.
+                    </p>
+                    <p className="text-[11px] text-blue-700 dark:text-blue-300">
+                      Token valid for <span className="font-semibold">15 minutes</span>. Max 3 verification attempts. Check your institutional inbox.
+                    </p>
+                  </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       6-Digit Security Code
@@ -186,10 +191,10 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                     <input
                       type="text"
                       value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      placeholder="849201"
+                      onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="000000"
                       maxLength={6}
-                      className="w-full px-3 py-2 text-center tracking-widest text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      className="w-full px-3 py-2 text-center tracking-widest text-base font-mono font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                       required
                     />
                   </div>

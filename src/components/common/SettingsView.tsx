@@ -17,10 +17,13 @@ import {
   Volume2,
   Mail,
   FileSpreadsheet,
+  Trash2,
 } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
-  const { user } = useAuth();
+  const { user, deleteAccount } = useAuth();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Appearance State
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -469,6 +472,58 @@ export const SettingsView: React.FC = () => {
               <FileSpreadsheet className="w-4 h-4" />
               Download My Academic Ledger
             </button>
+          </div>
+
+          {/* Privacy & Account Deletion (GDPR / FERPA) */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-red-200 dark:border-red-900/50 p-5 shadow-xs">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400 mb-2 flex items-center gap-1.5">
+              <Trash2 className="w-4 h-4 text-red-500" />
+              Data Privacy & Account Erasure
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+              Exercise your FERPA / GDPR Right to be Forgotten. Permanently deletes your account and scrubs all personal identifiable data.
+            </p>
+
+            {!showDeleteConfirm ? (
+              <button
+                id="delete-account-trigger-btn"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-full py-2.5 px-3 rounded-xl text-xs font-semibold bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 border border-red-200 dark:border-red-900 transition-colors flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete My Account & Personal Data
+              </button>
+            ) : (
+              <div className="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/80 border border-red-200 dark:border-red-800 space-y-3">
+                <p className="text-xs font-bold text-red-900 dark:text-red-200">
+                  Are you absolutely certain?
+                </p>
+                <p className="text-[11px] text-red-700 dark:text-red-300 leading-relaxed">
+                  This action is permanent. Your credentials will be erased, course enrollments removed, and submissions anonymized.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    id="confirm-delete-account-btn"
+                    disabled={isDeleting}
+                    onClick={async () => {
+                      setIsDeleting(true);
+                      await deleteAccount();
+                    }}
+                    className="flex-1 py-2 px-3 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50"
+                  >
+                    {isDeleting ? 'Erasing Data...' : 'Yes, Permanently Delete'}
+                  </button>
+                  <button
+                    id="cancel-delete-account-btn"
+                    disabled={isDeleting}
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="py-2 px-3 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

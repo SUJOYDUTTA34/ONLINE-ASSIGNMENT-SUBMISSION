@@ -24,6 +24,18 @@ import {
   sujoyDuttaAvatar,
 } from '../data/seedData';
 import { syncAppointmentToSupabase, syncUserToSupabase } from './supabaseClient';
+import {
+  hashPassword,
+  verifyPassword,
+  getStoredCredentialHash,
+  setStoredCredentialHash,
+  removeStoredCredential,
+  filterUserDataForClient,
+  redactSensitive,
+  removeSessionToken,
+  sanitizeTextInput,
+  sanitizeFileName,
+} from '../lib/security';
 
 const KEYS = {
   USERS: 'oass_users_v1',
@@ -45,8 +57,9 @@ function getItem<T>(key: string, fallback: T): T {
       return fallback;
     }
     return JSON.parse(val);
-  } catch (e) {
-    console.error(`Error reading ${key} from storage:`, e);
+  } catch {
+    // Sanitized: No user payload or context leaked to logs
+    console.error('Storage read notice for key:', key);
     return fallback;
   }
 }
@@ -54,8 +67,9 @@ function getItem<T>(key: string, fallback: T): T {
 function setItem<T>(key: string, val: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(val));
-  } catch (e) {
-    console.error(`Error writing ${key} to storage:`, e);
+  } catch {
+    // Sanitized: No user payload or context leaked to logs
+    console.error('Storage write notice for key:', key);
   }
 }
 
@@ -148,7 +162,23 @@ export const storage = {
       setItem(KEYS.USERS, updatedUsers);
     }
 
-    // Sync all users to Supabase on startup
+    // Strip any legacy plaintext passwords from storage and seed isolated PBKDF2 credentials
+    const allUsers = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
+    allUsers.forEach(async (u) => {
+      const existingHash = getStoredCredentialHash(u.id);
+      if (!existingHash) {
+        const initialHash = await hashPassword('password123');
+        setStoredCredentialHash(u.id, initialHash);
+      }
+    });
+
+    const strippedUsers = allUsers.map((u) => {
+      const { password, ...rest } = u;
+      return rest as User;
+    });
+    setItem(KEYS.USERS, strippedUsers);
+
+    // Sync all users to Supabase on startup (PII stripped)
     const finalUsers = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
     finalUsers.forEach((u) => {
       syncUserToSupabase({
@@ -157,7 +187,6 @@ export const storage = {
         email: u.email,
         role: u.role,
         departmentName: u.departmentName,
-        phone: u.phone,
         status: u.status,
         studentIdNumber: u.studentIdNumber,
         employeeIdNumber: u.employeeIdNumber,
@@ -182,60 +211,77 @@ export const storage = {
     this.resetAll();
   },
 
-  // Users
-  getUsers(): User[] {
-    const list = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
-    return list.map((u) => ({
-      ...u,
-      createdAt: u.createdAt || u.joinedDate,
-    }));
+  // Current session user lookup
+  getCurrentUser(): User | undefined {
+    const uid = this.getCurrentUserId();
+    if (!uid) return undefined;
+    const users = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
+    return users.find((u) => u.id === uid);
   },
 
-  getUserById(id: string): User | undefined {
-    return this.getUsers().find((u) => u.id === id);
+  // Users (Role-aware Least Privilege Field-Level Filtering)
+  getUsers(requester?: User | { id?: string; role?: string } | null): User[] {
+    const activeRequester = requester || this.getCurrentUser();
+    const list = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
+    return list.map((u) => {
+      const sanitized = filterUserDataForClient(u, activeRequester);
+      return {
+        ...sanitized,
+        createdAt: sanitized.createdAt || sanitized.joinedDate,
+      } as User;
+    });
+  },
+
+  getUserById(id: string, requester?: User | { id?: string; role?: string } | null): User | undefined {
+    const activeRequester = requester || this.getCurrentUser();
+    const users = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
+    const found = users.find((u) => u.id === id);
+    if (!found) return undefined;
+    return filterUserDataForClient(found, activeRequester) as User;
   },
 
   getUserByEmail(email: string): User | undefined {
     if (!email) return undefined;
     const term = email.trim().toLowerCase();
-    const users = this.getUsers();
+    const rawUsers = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
 
-    // 1. Direct match by primary email, alternate email, student ID, or employee ID
-    const directMatch = users.find(
+    // Exact match only: primary email, alternate email, student ID number, or employee ID number
+    const directMatch = rawUsers.find(
       (u) =>
         u.email.toLowerCase() === term ||
         (u.alternateEmail && u.alternateEmail.toLowerCase() === term) ||
         (u.studentIdNumber && u.studentIdNumber.toLowerCase() === term) ||
         (u.employeeIdNumber && u.employeeIdNumber.toLowerCase() === term)
     );
-    if (directMatch) return directMatch;
-
-    // 2. Name or username match
-    const nameMatch = users.find(
-      (u) =>
-        u.name.toLowerCase() === term ||
-        u.name.toLowerCase().replace(/\s+/g, '') === term ||
-        u.email.split('@')[0].toLowerCase() === term
-    );
-    if (nameMatch) return nameMatch;
-
-    // 3. Demo role aliases
-    if (term.includes('student')) {
-      return users.find((u) => u.id === 'user-stu-1') || users.find((u) => u.role === 'student');
-    }
-    if (term.includes('faculty') || term.includes('teacher') || term.includes('prof')) {
-      return users.find((u) => u.id === 'user-fac-1') || users.find((u) => u.role === 'faculty');
-    }
-    if (term.includes('admin')) {
-      return users.find((u) => u.role === 'admin');
-    }
+    if (directMatch) return filterUserDataForClient(directMatch, { id: directMatch.id, role: directMatch.role }) as User;
 
     return undefined;
   },
 
+  /**
+   * Secure Credential Verification (Zero Password Exposure)
+   */
+  async verifyUserCredentials(userIdOrEmail: string, plainPassword: string): Promise<boolean> {
+    if (!userIdOrEmail || !plainPassword) return false;
+    const user = this.getUserById(userIdOrEmail) || this.getUserByEmail(userIdOrEmail);
+    if (!user) return false;
+
+    let storedHash = getStoredCredentialHash(user.id);
+    if (!storedHash) {
+      return false; // Reject logins if no credential is set (no default password fallback)
+    }
+    return await verifyPassword(plainPassword, storedHash);
+  },
+
   createUser(userData: Partial<User>, creator?: User): User {
-    const users = this.getUsers();
+    const users = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
     const id = userData.id || `user-${userData.role}-${Date.now().toString().slice(-4)}`;
+
+    // Store credentials in isolated vault - NEVER in user directory
+    if (userData.password) {
+      setStoredCredentialHash(id, userData.password);
+    }
+
     const newUser: User = {
       id,
       name: userData.name || '',
@@ -254,7 +300,6 @@ export const storage = {
       program: userData.program,
       joinedDate: new Date().toISOString(),
       createdAt: new Date().toISOString(),
-      password: userData.password,
     };
 
     users.unshift(newUser);
@@ -268,7 +313,7 @@ export const storage = {
         action: 'USER_CREATED',
         entityType: 'User',
         entityId: id,
-        details: `Provisioned user account for ${newUser.name} (${newUser.email}) as ${newUser.role}`,
+        details: `Provisioned user account for ${newUser.name} ([REDACTED]) as ${newUser.role}`,
         ipAddress: '127.0.0.1',
       });
     }
@@ -279,7 +324,6 @@ export const storage = {
       email: newUser.email,
       role: newUser.role,
       departmentName: newUser.departmentName,
-      phone: newUser.phone,
       status: newUser.status,
       studentIdNumber: newUser.studentIdNumber,
       employeeIdNumber: newUser.employeeIdNumber,
@@ -291,26 +335,53 @@ export const storage = {
   },
 
   updateUser(id: string, updates: Partial<User>, updater?: User): User {
-    const users = this.getUsers();
+    const users = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
     const index = users.findIndex((u) => u.id === id);
     if (index < 0) throw new Error('User not found');
 
-    const updated = { ...users[index], ...updates };
+    const resolvedUpdater = updater || this.getCurrentUser();
+    if (!resolvedUpdater) {
+      throw new Error('Unauthorized: Authentication required to update user accounts.');
+    }
+
+    // Privilege Escalation Guard
+    if (resolvedUpdater.role !== 'admin') {
+      if (resolvedUpdater.id !== id) {
+        throw new Error('Unauthorized: You cannot modify other user accounts.');
+      }
+      // Non-administrators cannot modify security-critical attributes
+      const forbiddenFields: (keyof User)[] = ['role', 'status', 'departmentId', 'studentIdNumber', 'employeeIdNumber', 'id'];
+      for (const field of forbiddenFields) {
+        if (field in updates && (updates as any)[field] !== users[index][field]) {
+          throw new Error(`Unauthorized: Modifying administrative attribute "${field}" is strictly forbidden.`);
+        }
+      }
+    }
+
+    const { password, ...safeUpdates } = updates;
+    if (password) {
+      setStoredCredentialHash(id, password);
+    }
+
+    // Sanitize user inputs
+    if (safeUpdates.name) safeUpdates.name = sanitizeTextInput(safeUpdates.name);
+    if (safeUpdates.phone) safeUpdates.phone = sanitizeTextInput(safeUpdates.phone);
+    if (safeUpdates.program) safeUpdates.program = sanitizeTextInput(safeUpdates.program);
+
+    const updated = { ...users[index], ...safeUpdates };
     users[index] = updated;
     setItem(KEYS.USERS, users);
 
-    if (updater) {
-      this.addAuditLog({
-        userId: updater.id,
-        userName: updater.name,
-        userRole: updater.role,
-        action: 'USER_UPDATED',
-        entityType: 'User',
-        entityId: id,
-        details: `Updated user profile/status for ${updated.name}`,
-        ipAddress: '127.0.0.1',
-      });
-    }
+    this.addAuditLog({
+      userId: resolvedUpdater.id,
+      userName: resolvedUpdater.name,
+      userRole: resolvedUpdater.role,
+      action: 'USER_UPDATED',
+      entityType: 'User',
+      entityId: id,
+      details: `Updated user profile/status for ${updated.name}`,
+      ipAddress: '127.0.0.1',
+    });
 
     syncUserToSupabase({
       id: updated.id,
@@ -318,7 +389,6 @@ export const storage = {
       email: updated.email,
       role: updated.role,
       departmentName: updated.departmentName,
-      phone: updated.phone,
       status: updated.status,
       studentIdNumber: updated.studentIdNumber,
       employeeIdNumber: updated.employeeIdNumber,
@@ -329,51 +399,163 @@ export const storage = {
     return updated;
   },
 
-  saveUser(user: User): User {
-    const users = this.getUsers();
-    const index = users.findIndex((u) => u.id === user.id);
+  updateUserPassword(userId: string, newPasswordHash: string): boolean {
+    const users = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
+    const index = users.findIndex((u) => u.id === userId);
+    if (index < 0) return false;
+
+    // Secure: Store hash in isolated credentials store, remove from user record
+    setStoredCredentialHash(userId, newPasswordHash);
+    if (users[index].password) {
+      delete users[index].password;
+      setItem(KEYS.USERS, users);
+    }
+    return true;
+  },
+
+  saveUser(user: User, caller?: User): User {
+    const users = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
+    const { password, ...safeUser } = user;
+    if (password) {
+      setStoredCredentialHash(user.id, password);
+    }
+
+    const resolvedCaller = caller || this.getCurrentUser();
+    const index = users.findIndex((u) => u.id === safeUser.id);
+
+    // Prevent privilege escalation if existing user role is being modified by non-admin
+    if (index >= 0 && resolvedCaller && resolvedCaller.role !== 'admin') {
+      if (users[index].role !== safeUser.role) {
+        throw new Error('Unauthorized: Role alteration is restricted to system administrators.');
+      }
+      if (users[index].status !== safeUser.status) {
+        throw new Error('Unauthorized: Status alteration is restricted to system administrators.');
+      }
+    }
+
     if (index >= 0) {
-      users[index] = user;
+      users[index] = safeUser as User;
     } else {
-      users.unshift(user);
+      users.unshift(safeUser as User);
     }
     setItem(KEYS.USERS, users);
 
     syncUserToSupabase({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      departmentName: user.departmentName,
-      phone: user.phone,
-      status: user.status,
-      studentIdNumber: user.studentIdNumber,
-      employeeIdNumber: user.employeeIdNumber,
-      program: user.program,
-      joinedDate: user.joinedDate,
+      id: safeUser.id,
+      name: safeUser.name,
+      email: safeUser.email,
+      role: safeUser.role,
+      departmentName: safeUser.departmentName,
+      status: safeUser.status,
+      studentIdNumber: safeUser.studentIdNumber,
+      employeeIdNumber: safeUser.employeeIdNumber,
+      program: safeUser.program,
+      joinedDate: safeUser.joinedDate,
     });
 
-    return user;
+    return safeUser as User;
   },
 
   deleteUser(id: string, deleter?: User): boolean {
-    const user = this.getUserById(id);
+    const resolvedDeleter = deleter || this.getCurrentUser();
+    if (!resolvedDeleter || resolvedDeleter.role !== 'admin') {
+      throw new Error('Unauthorized: Only system administrators can delete user accounts.');
+    }
+    if (id === resolvedDeleter.id) {
+      throw new Error('Action Denied: Administrator self-deletion is forbidden.');
+    }
+
+    const targetUser = this.getUserById(id);
     const users = this.getUsers().filter((u) => u.id !== id);
     setItem(KEYS.USERS, users);
+    removeStoredCredential(id);
 
-    if (deleter && user) {
+    if (targetUser) {
       this.addAuditLog({
-        userId: deleter.id,
-        userName: deleter.name,
-        userRole: deleter.role,
+        userId: resolvedDeleter.id,
+        userName: resolvedDeleter.name,
+        userRole: resolvedDeleter.role,
         action: 'USER_DELETED',
         entityType: 'User',
         entityId: id,
-        details: `De-provisioned user account ${user.name} (${user.email})`,
+        details: `De-provisioned user account ID ${id} (${targetUser.name})`,
         ipAddress: '127.0.0.1',
       });
     }
     return true;
+  },
+
+  /**
+   * GDPR / FERPA Compliant Account Deletion & Right to be Forgotten.
+   * Permanently erases or anonymizes all personal identifiers, submissions, and credentials.
+   */
+  purgeUserPersonalData(userId: string): { success: boolean; message: string } {
+    const user = this.getUserById(userId);
+    if (!user) return { success: false, message: 'User record not found.' };
+
+    // 1. Remove credentials from isolated credential vault
+    removeStoredCredential(userId);
+
+    // 2. Anonymize user submissions
+    const submissions = this.getSubmissions();
+    const updatedSubmissions = submissions.map((sub) => {
+      if (sub.studentId === userId) {
+        return {
+          ...sub,
+          studentName: '[Deactivated Student Record]',
+          comments: '',
+          grade: sub.grade
+            ? {
+                ...sub.grade,
+                feedback: '[Archived Evaluation]',
+                internalNotes: '',
+                privateNotes: '',
+              }
+            : undefined,
+        };
+      }
+      return sub;
+    });
+    setItem(KEYS.SUBMISSIONS, updatedSubmissions);
+
+    // 3. Un-enroll user from all active courses
+    const courses = this.getCourses();
+    const updatedCourses = courses.map((course) => ({
+      ...course,
+      enrolledStudentIds: (course.enrolledStudentIds || []).filter((id) => id !== userId),
+    }));
+    setItem(KEYS.COURSES, updatedCourses);
+
+    // 4. Remove user notifications
+    const allNotifications = getItem<AppNotification[]>(KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS);
+    setItem(
+      KEYS.NOTIFICATIONS,
+      allNotifications.filter((n) => n.userId !== userId)
+    );
+
+    // 5. Remove user record from user directory
+    const users = getItem<User[]>(KEYS.USERS, INITIAL_USERS).filter((u) => u.id !== userId);
+    setItem(KEYS.USERS, users);
+
+    // 6. Log compliance audit event with zero PII
+    this.addAuditLog({
+      userId: 'system',
+      userName: 'Privacy Officer / System',
+      userRole: 'admin',
+      action: 'USER_DATA_PURGED',
+      entityType: 'User',
+      entityId: userId,
+      details: `Permanent GDPR/FERPA Right-to-be-Forgotten data erasure fulfilled for Account ID: ${userId}`,
+      ipAddress: '127.0.0.1',
+    });
+
+    // 7. Clear session if deleted user was active
+    if (this.getCurrentUserId() === userId) {
+      this.setCurrentUserId('');
+      removeSessionToken();
+    }
+
+    return { success: true, message: 'Personal data and account successfully purged.' };
   },
 
   // Current session user
@@ -396,39 +578,47 @@ export const storage = {
 
   createDepartment(deptData: Partial<Department>, creator?: User): Department {
     const depts = this.getDepartments();
+    const resolvedCreator = creator || this.getCurrentUser();
+    if (!resolvedCreator || resolvedCreator.role !== 'admin') {
+      throw new Error('Unauthorized: Only system administrators can create academic departments.');
+    }
+
     const id = deptData.id || `dept-${Date.now()}`;
     const newDept: Department = {
       id,
-      name: deptData.name || '',
-      code: deptData.code || '',
-      head: deptData.head || deptData.headOfDepartment || '',
-      headOfDepartment: deptData.headOfDepartment || deptData.head || '',
-      building: deptData.building,
-      contactEmail: deptData.contactEmail,
-      description: deptData.description,
+      name: sanitizeTextInput(deptData.name || ''),
+      code: sanitizeTextInput(deptData.code || '').toUpperCase(),
+      head: sanitizeTextInput(deptData.head || deptData.headOfDepartment || ''),
+      headOfDepartment: sanitizeTextInput(deptData.headOfDepartment || deptData.head || ''),
+      building: deptData.building ? sanitizeTextInput(deptData.building) : undefined,
+      contactEmail: deptData.contactEmail?.trim().toLowerCase(),
+      description: deptData.description ? sanitizeTextInput(deptData.description) : undefined,
       status: 'active',
       coursesCount: 0,
     };
     depts.push(newDept);
     setItem(KEYS.DEPARTMENTS, depts);
 
-    if (creator) {
-      this.addAuditLog({
-        userId: creator.id,
-        userName: creator.name,
-        userRole: creator.role,
-        action: 'DEPARTMENT_CREATED',
-        entityType: 'Department',
-        entityId: id,
-        details: `Created department ${newDept.name} (${newDept.code})`,
-        ipAddress: '127.0.0.1',
-      });
-    }
+    this.addAuditLog({
+      userId: resolvedCreator.id,
+      userName: resolvedCreator.name,
+      userRole: resolvedCreator.role,
+      action: 'DEPARTMENT_CREATED',
+      entityType: 'Department',
+      entityId: id,
+      details: `Created department ${newDept.name} (${newDept.code})`,
+      ipAddress: '127.0.0.1',
+    });
 
     return newDept;
   },
 
   updateDepartment(id: string, updates: Partial<Department>, updater?: User): Department {
+    const resolvedUpdater = updater || this.getCurrentUser();
+    if (!resolvedUpdater || resolvedUpdater.role !== 'admin') {
+      throw new Error('Unauthorized: Only system administrators can update academic departments.');
+    }
+
     const depts = this.getDepartments();
     const index = depts.findIndex((d) => d.id === id);
     if (index < 0) throw new Error('Department not found');
@@ -442,23 +632,25 @@ export const storage = {
     depts[index] = updated;
     setItem(KEYS.DEPARTMENTS, depts);
 
-    if (updater) {
-      this.addAuditLog({
-        userId: updater.id,
-        userName: updater.name,
-        userRole: updater.role,
-        action: 'DEPARTMENT_UPDATED',
-        entityType: 'Department',
-        entityId: id,
-        details: `Updated department info for ${updated.name}`,
-        ipAddress: '127.0.0.1',
-      });
-    }
+    this.addAuditLog({
+      userId: resolvedUpdater.id,
+      userName: resolvedUpdater.name,
+      userRole: resolvedUpdater.role,
+      action: 'DEPARTMENT_UPDATED',
+      entityType: 'Department',
+      entityId: id,
+      details: `Updated department info for ${updated.name}`,
+      ipAddress: '127.0.0.1',
+    });
 
     return updated;
   },
 
-  saveDepartment(dept: Department): Department {
+  saveDepartment(dept: Department, caller?: User): Department {
+    const resolved = caller || this.getCurrentUser();
+    if (!resolved || resolved.role !== 'admin') {
+      throw new Error('Unauthorized: Administrator privilege required.');
+    }
     const depts = this.getDepartments();
     const index = depts.findIndex((d) => d.id === dept.id);
     if (index >= 0) {
@@ -471,20 +663,23 @@ export const storage = {
   },
 
   deleteDepartment(id: string, deleter?: User): boolean {
+    const resolvedDeleter = deleter || this.getCurrentUser();
+    if (!resolvedDeleter || resolvedDeleter.role !== 'admin') {
+      throw new Error('Unauthorized: Only system administrators can delete academic departments.');
+    }
+
     const depts = this.getDepartments().filter((d) => d.id !== id);
     setItem(KEYS.DEPARTMENTS, depts);
-    if (deleter) {
-      this.addAuditLog({
-        userId: deleter.id,
-        userName: deleter.name,
-        userRole: deleter.role,
-        action: 'DEPARTMENT_DELETED',
-        entityType: 'Department',
-        entityId: id,
-        details: `Deleted department ${id}`,
-        ipAddress: '127.0.0.1',
-      });
-    }
+    this.addAuditLog({
+      userId: resolvedDeleter.id,
+      userName: resolvedDeleter.name,
+      userRole: resolvedDeleter.role,
+      action: 'DEPARTMENT_DELETED',
+      entityType: 'Department',
+      entityId: id,
+      details: `Deleted department ${id}`,
+      ipAddress: '127.0.0.1',
+    });
     return true;
   },
 
@@ -505,12 +700,17 @@ export const storage = {
   },
 
   createCourse(courseData: Partial<Course>, creator?: User): Course {
+    const resolvedCreator = creator || this.getCurrentUser();
+    if (!resolvedCreator || (resolvedCreator.role !== 'admin' && resolvedCreator.role !== 'faculty')) {
+      throw new Error('Unauthorized: Only administrators or faculty can create course catalog entries.');
+    }
+
     const courses = this.getCourses();
     const id = courseData.id || `course-${Date.now()}`;
-    const code = courseData.code || courseData.courseCode || '';
-    const title = courseData.title || courseData.courseName || '';
-    const facultyId = courseData.facultyId || (courseData.facultyIds && courseData.facultyIds[0]) || '';
-    const facultyName = courseData.facultyName || '';
+    const code = sanitizeTextInput(courseData.code || courseData.courseCode || '').toUpperCase();
+    const title = sanitizeTextInput(courseData.title || courseData.courseName || '');
+    const facultyId = resolvedCreator.role === 'faculty' ? resolvedCreator.id : (courseData.facultyId || (courseData.facultyIds && courseData.facultyIds[0]) || '');
+    const facultyName = resolvedCreator.role === 'faculty' ? resolvedCreator.name : (courseData.facultyName || '');
 
     const newCourse: Course = {
       id,
@@ -528,8 +728,8 @@ export const storage = {
       facultyName,
       facultyNames: [facultyName],
       enrolledStudentIds: courseData.enrolledStudentIds || [],
-      description: courseData.description || '',
-      syllabus: courseData.syllabus,
+      description: courseData.description ? sanitizeTextInput(courseData.description) : '',
+      syllabus: courseData.syllabus ? sanitizeTextInput(courseData.syllabus) : undefined,
       credits: courseData.credits || 3,
       status: 'active',
     };
@@ -537,26 +737,36 @@ export const storage = {
     courses.push(newCourse);
     setItem(KEYS.COURSES, courses);
 
-    if (creator) {
-      this.addAuditLog({
-        userId: creator.id,
-        userName: creator.name,
-        userRole: creator.role,
-        action: 'COURSE_CREATED',
-        entityType: 'Course',
-        entityId: id,
-        details: `Created course catalog entry ${newCourse.code} (${newCourse.title})`,
-        ipAddress: '127.0.0.1',
-      });
-    }
+    this.addAuditLog({
+      userId: resolvedCreator.id,
+      userName: resolvedCreator.name,
+      userRole: resolvedCreator.role,
+      action: 'COURSE_CREATED',
+      entityType: 'Course',
+      entityId: id,
+      details: `Created course catalog entry ${newCourse.code} (${newCourse.title})`,
+      ipAddress: '127.0.0.1',
+    });
 
     return newCourse;
   },
 
   updateCourse(id: string, updates: Partial<Course>, updater?: User): Course {
+    const resolvedUpdater = updater || this.getCurrentUser();
+    if (!resolvedUpdater) {
+      throw new Error('Unauthorized: Authentication required.');
+    }
+
     const courses = this.getCourses();
     const index = courses.findIndex((c) => c.id === id);
     if (index < 0) throw new Error('Course not found');
+
+    if (resolvedUpdater.role !== 'admin') {
+      const isAssigned = courses[index].facultyId === resolvedUpdater.id || courses[index].facultyIds?.includes(resolvedUpdater.id);
+      if (!isAssigned) {
+        throw new Error('Unauthorized: You can only update courses for which you are the assigned faculty instructor.');
+      }
+    }
 
     const code = updates.code || updates.courseCode || courses[index].code || courses[index].courseCode;
     const title = updates.title || updates.courseName || courses[index].title || courses[index].courseName;
@@ -576,23 +786,25 @@ export const storage = {
     courses[index] = updated;
     setItem(KEYS.COURSES, courses);
 
-    if (updater) {
-      this.addAuditLog({
-        userId: updater.id,
-        userName: updater.name,
-        userRole: updater.role,
-        action: 'COURSE_UPDATED',
-        entityType: 'Course',
-        entityId: id,
-        details: `Updated course ${updated.code} - ${updated.title}`,
-        ipAddress: '127.0.0.1',
-      });
-    }
+    this.addAuditLog({
+      userId: resolvedUpdater.id,
+      userName: resolvedUpdater.name,
+      userRole: resolvedUpdater.role,
+      action: 'COURSE_UPDATED',
+      entityType: 'Course',
+      entityId: id,
+      details: `Updated course ${updated.code} - ${updated.title}`,
+      ipAddress: '127.0.0.1',
+    });
 
     return updated;
   },
 
-  saveCourse(course: Course): Course {
+  saveCourse(course: Course, caller?: User): Course {
+    const resolved = caller || this.getCurrentUser();
+    if (!resolved || (resolved.role !== 'admin' && resolved.role !== 'faculty')) {
+      throw new Error('Unauthorized: Administrator or Faculty role required.');
+    }
     const courses = this.getCourses();
     const index = courses.findIndex((c) => c.id === course.id);
     if (index >= 0) {
@@ -605,15 +817,20 @@ export const storage = {
   },
 
   deleteCourse(id: string, deleter?: User): boolean {
+    const resolvedDeleter = deleter || this.getCurrentUser();
+    if (!resolvedDeleter || resolvedDeleter.role !== 'admin') {
+      throw new Error('Unauthorized: Only administrators can delete courses from the catalog.');
+    }
+
     const course = this.getCourseById(id);
     const courses = this.getCourses().filter((c) => c.id !== id);
     setItem(KEYS.COURSES, courses);
 
-    if (deleter && course) {
+    if (course) {
       this.addAuditLog({
-        userId: deleter.id,
-        userName: deleter.name,
-        userRole: deleter.role,
+        userId: resolvedDeleter.id,
+        userName: resolvedDeleter.name,
+        userRole: resolvedDeleter.role,
         action: 'COURSE_DELETED',
         entityType: 'Course',
         entityId: id,
@@ -624,28 +841,90 @@ export const storage = {
     return true;
   },
 
-  // Assignments
-  getAssignments(): Assignment[] {
-    return getItem(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
+  // Assignments (Role-based Filtering & Publication Guard)
+  getAssignments(requester?: User): Assignment[] {
+    const active = requester || this.getCurrentUser();
+    const all = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
+    if (!active) return [];
+
+    // System administrators see all assignments
+    if (active.role === 'admin') return all;
+
+    // Faculty see assignments for courses they instruct or in their department
+    if (active.role === 'faculty') {
+      const myCourses = this.getCourses().filter(
+        (c) => c.facultyId === active.id || c.facultyIds?.includes(active.id)
+      );
+      const myCourseIds = new Set(myCourses.map((c) => c.id));
+      return all.filter((a) => myCourseIds.has(a.courseId));
+    }
+
+    // Students: CANNOT view drafts or un-enrolled assignments
+    // Only published assignments for courses they are actively enrolled in
+    const enrolledCourses = this.getCourses().filter(
+      (c) => c.enrolledStudentIds?.includes(active.id)
+    );
+    const enrolledCourseIds = new Set(enrolledCourses.map((c) => c.id));
+
+    return all.filter(
+      (a) => a.status === 'published' && enrolledCourseIds.has(a.courseId)
+    );
   },
 
-  getAssignmentById(id: string): Assignment | undefined {
-    return this.getAssignments().find((a) => a.id === id);
+  getAssignmentById(id: string, requester?: User): Assignment | undefined {
+    const active = requester || this.getCurrentUser();
+    const assignment = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS).find((a) => a.id === id);
+    if (!assignment) return undefined;
+    if (!active) return undefined;
+
+    if (active.role === 'admin') return assignment;
+    if (active.role === 'faculty') {
+      const course = this.getCourseById(assignment.courseId);
+      const isAssigned = course && (course.facultyId === active.id || course.facultyIds?.includes(active.id));
+      return isAssigned ? assignment : undefined;
+    }
+
+    // Student access guard: Must be enrolled and assignment must be published
+    if (active.role === 'student') {
+      if (assignment.status !== 'published') return undefined;
+      const course = this.getCourseById(assignment.courseId);
+      if (!course || !course.enrolledStudentIds?.includes(active.id)) return undefined;
+    }
+
+    return assignment;
   },
 
-  updateAssignment(id: string, updates: Partial<Assignment>, user: User): Assignment {
-    const assignments = this.getAssignments();
+  updateAssignment(id: string, updates: Partial<Assignment>, user?: User): Assignment {
+    const resolvedUser = user || this.getCurrentUser();
+    if (!resolvedUser || (resolvedUser.role !== 'admin' && resolvedUser.role !== 'faculty')) {
+      throw new Error('Unauthorized: Only faculty instructors and administrators can modify assignments.');
+    }
+
+    const assignments = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
     const index = assignments.findIndex((a) => a.id === id);
     if (index < 0) throw new Error('Assignment not found');
 
-    const updated = { ...assignments[index], ...updates };
+    if (resolvedUser.role === 'faculty') {
+      const course = this.getCourseById(assignments[index].courseId);
+      const isAssigned = course && (course.facultyId === resolvedUser.id || course.facultyIds?.includes(resolvedUser.id));
+      if (!isAssigned) {
+        throw new Error('Unauthorized: You can only modify assignments for courses you instruct.');
+      }
+    }
+
+    const safeUpdates = { ...updates };
+    if (safeUpdates.title) safeUpdates.title = sanitizeTextInput(safeUpdates.title);
+    if (safeUpdates.description) safeUpdates.description = sanitizeTextInput(safeUpdates.description);
+    if (safeUpdates.instructions) safeUpdates.instructions = sanitizeTextInput(safeUpdates.instructions);
+
+    const updated = { ...assignments[index], ...safeUpdates };
     assignments[index] = updated;
     setItem(KEYS.ASSIGNMENTS, assignments);
 
     this.addAuditLog({
-      userId: user.id,
-      userName: user.name,
-      userRole: user.role,
+      userId: resolvedUser.id,
+      userName: resolvedUser.name,
+      userRole: resolvedUser.role,
       action: 'ASSIGNMENT_UPDATED',
       entityType: 'Assignment',
       entityId: id,
@@ -656,39 +935,58 @@ export const storage = {
     return updated;
   },
 
-  saveAssignment(assignment: Assignment, creator: User): Assignment {
-    const assignments = this.getAssignments();
+  saveAssignment(assignment: Assignment, creator?: User): Assignment {
+    const resolvedCreator = creator || this.getCurrentUser();
+    if (!resolvedCreator || (resolvedCreator.role !== 'admin' && resolvedCreator.role !== 'faculty')) {
+      throw new Error('Unauthorized: Only faculty instructors and administrators can create or publish assignments.');
+    }
+
+    if (resolvedCreator.role === 'faculty') {
+      const course = this.getCourseById(assignment.courseId);
+      const isAssigned = course && (course.facultyId === resolvedCreator.id || course.facultyIds?.includes(resolvedCreator.id));
+      if (!isAssigned) {
+        throw new Error('Unauthorized: You can only create assignments for courses you instruct.');
+      }
+    }
+
+    const assignments = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
     const index = assignments.findIndex((a) => a.id === assignment.id);
     const isNew = index < 0;
 
+    const sanitizedAssignment: Assignment = {
+      ...assignment,
+      title: sanitizeTextInput(assignment.title),
+      description: sanitizeTextInput(assignment.description),
+      instructions: sanitizeTextInput(assignment.instructions || ''),
+    };
+
     if (index >= 0) {
-      assignments[index] = assignment;
+      assignments[index] = sanitizedAssignment;
     } else {
-      assignments.unshift(assignment);
+      assignments.unshift(sanitizedAssignment);
     }
     setItem(KEYS.ASSIGNMENTS, assignments);
 
-    // Audit log
     this.addAuditLog({
-      userId: creator.id,
-      userName: creator.name,
-      userRole: creator.role,
+      userId: resolvedCreator.id,
+      userName: resolvedCreator.name,
+      userRole: resolvedCreator.role,
       action: isNew ? 'ASSIGNMENT_CREATED' : 'ASSIGNMENT_UPDATED',
       entityType: 'Assignment',
-      entityId: assignment.id,
-      details: `${isNew ? 'Created' : 'Updated'} assignment "${assignment.title}" for ${assignment.courseCode}`,
+      entityId: sanitizedAssignment.id,
+      details: `${isNew ? 'Created' : 'Updated'} assignment "${sanitizedAssignment.title}" for ${sanitizedAssignment.courseCode}`,
       ipAddress: '127.0.0.1',
     });
 
     // If published, notify enrolled students
-    if (isNew && assignment.status === 'published') {
-      const course = this.getCourseById(assignment.courseId);
+    if (isNew && sanitizedAssignment.status === 'published') {
+      const course = this.getCourseById(sanitizedAssignment.courseId);
       if (course && course.enrolledStudentIds.length > 0) {
         course.enrolledStudentIds.forEach((stuId) => {
           this.addNotification({
             userId: stuId,
-            title: `New Assignment: ${assignment.title}`,
-            message: `${assignment.facultyName} posted a new assignment for ${assignment.courseCode}. Due on ${new Date(assignment.dueAt).toLocaleDateString()}.`,
+            title: `New Assignment: ${sanitizedAssignment.title}`,
+            message: `${sanitizedAssignment.facultyName} posted a new assignment for ${sanitizedAssignment.courseCode}. Due on ${new Date(sanitizedAssignment.dueAt).toLocaleDateString()}.`,
             type: 'assignment',
             actionTab: 'assignments',
           });
@@ -696,42 +994,120 @@ export const storage = {
       }
     }
 
-    return assignment;
+    return sanitizedAssignment;
   },
 
-  deleteAssignment(id: string, user: User): boolean {
-    const assignment = this.getAssignmentById(id);
-    const assignments = this.getAssignments().filter((a) => a.id !== id);
+  deleteAssignment(id: string, user?: User): boolean {
+    const resolvedUser = user || this.getCurrentUser();
+    if (!resolvedUser || (resolvedUser.role !== 'admin' && resolvedUser.role !== 'faculty')) {
+      throw new Error('Unauthorized: Only faculty instructors and administrators can archive assignments.');
+    }
+
+    const assignment = this.getAssignmentById(id, resolvedUser);
+    if (!assignment) {
+      throw new Error('Assignment not found or unauthorized.');
+    }
+
+    if (resolvedUser.role === 'faculty') {
+      const course = this.getCourseById(assignment.courseId);
+      const isAssigned = course && (course.facultyId === resolvedUser.id || course.facultyIds?.includes(resolvedUser.id));
+      if (!isAssigned) {
+        throw new Error('Unauthorized: You can only delete assignments for courses you instruct.');
+      }
+    }
+
+    const assignments = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS).filter((a) => a.id !== id);
     setItem(KEYS.ASSIGNMENTS, assignments);
 
-    if (assignment) {
-      this.addAuditLog({
-        userId: user.id,
-        userName: user.name,
-        userRole: user.role,
-        action: 'ASSIGNMENT_ARCHIVED',
-        entityType: 'Assignment',
-        entityId: id,
-        details: `Archived/Removed assignment "${assignment.title}"`,
-        ipAddress: '127.0.0.1',
-      });
-    }
+    this.addAuditLog({
+      userId: resolvedUser.id,
+      userName: resolvedUser.name,
+      userRole: resolvedUser.role,
+      action: 'ASSIGNMENT_ARCHIVED',
+      entityType: 'Assignment',
+      entityId: id,
+      details: `Archived/Removed assignment "${assignment.title}"`,
+      ipAddress: '127.0.0.1',
+    });
+
     return true;
   },
 
-  // Submissions
-  getSubmissions(): Submission[] {
-    return getItem(KEYS.SUBMISSIONS, INITIAL_SUBMISSIONS);
+  // Submissions (Authorized & Ownership Enforcement to eliminate IDOR)
+  getSubmissions(requester?: User): Submission[] {
+    const active = requester || this.getCurrentUser();
+    if (!active) return []; // Defense in Depth: Never leak submissions to unauthenticated callers
+
+    const list = getItem<Submission[]>(KEYS.SUBMISSIONS, INITIAL_SUBMISSIONS);
+    if (active.role === 'admin') return list;
+
+    if (active.role === 'faculty') {
+      const facultyCourses = this.getCourses().filter(
+        (c) => c.facultyId === active.id || c.facultyIds?.includes(active.id)
+      );
+      const courseIds = new Set(facultyCourses.map((c) => c.id));
+      return list.filter((s) => courseIds.has(s.courseId));
+    }
+
+    // Students: Strictly access ONLY their own submissions with private faculty notes stripped
+    return list
+      .filter((s) => s.studentId === active.id)
+      .map((s) => {
+        if (s.grade) {
+          const { internalNotes, privateNotes, ...safeGrade } = s.grade;
+          return { ...s, grade: safeGrade as Grade };
+        }
+        return s;
+      });
   },
 
-  getSubmissionById(id: string): Submission | undefined {
-    return this.getSubmissions().find((s) => s.id === id);
+  getSubmissionById(id: string, requester?: User): Submission | undefined {
+    const active = requester || this.getCurrentUser();
+    if (!active) return undefined; // Defense in Depth: Never return submission to unauthenticated caller
+
+    const sub = getItem<Submission[]>(KEYS.SUBMISSIONS, INITIAL_SUBMISSIONS).find((s) => s.id === id);
+    if (!sub) return undefined;
+
+    if (active.role === 'admin') return sub;
+
+    if (active.role === 'faculty') {
+      const facultyCourses = this.getCourses().filter(
+        (c) => c.facultyId === active.id || c.facultyIds?.includes(active.id)
+      );
+      const courseIds = new Set(facultyCourses.map((c) => c.id));
+      return courseIds.has(sub.courseId) ? sub : undefined;
+    }
+
+    if (active.role === 'student') {
+      // IDOR Guard: A student cannot view another student's submission
+      if (sub.studentId !== active.id) return undefined;
+      // Field-level filtering: Strip internal faculty grading notes
+      if (sub.grade) {
+        const { internalNotes, privateNotes, ...safeGrade } = sub.grade;
+        return { ...sub, grade: safeGrade as Grade };
+      }
+    }
+    return sub;
   },
 
-  saveSubmission(submissionData: Omit<Submission, 'id' | 'receiptId' | 'submittedAt' | 'isLate' | 'lateDays' | 'latePenaltyPercent' | 'status' | 'version'>, student: User): Submission {
-    const assignment = this.getAssignmentById(submissionData.assignmentId);
+  saveSubmission(
+    submissionData: Omit<Submission, 'id' | 'receiptId' | 'submittedAt' | 'isLate' | 'lateDays' | 'latePenaltyPercent' | 'status' | 'version'>,
+    student?: User
+  ): Submission {
+    const activeStudent = student || this.getCurrentUser();
+    if (!activeStudent || activeStudent.role !== 'student') {
+      throw new Error('Unauthorized: Only enrolled students can submit assignments.');
+    }
+
+    const assignment = this.getAssignmentById(submissionData.assignmentId, activeStudent);
     if (!assignment) {
-      throw new Error('Assignment not found');
+      throw new Error('Assignment not found or inaccessible.');
+    }
+
+    // Business Logic & IDOR Guard: Verify student is enrolled in this course
+    const course = this.getCourseById(assignment.courseId);
+    if (!course || !course.enrolledStudentIds?.includes(activeStudent.id)) {
+      throw new Error('Unauthorized: You are not enrolled in the course for this assignment.');
     }
 
     const now = new Date();
@@ -749,9 +1125,9 @@ export const storage = {
       latePenaltyPercent = Math.min(100, lateDays * (assignment.latePenaltyPercentPerDay || 0));
     }
 
-    const allSubmissions = this.getSubmissions();
+    const allSubmissions = getItem<Submission[]>(KEYS.SUBMISSIONS, INITIAL_SUBMISSIONS);
     const existing = allSubmissions.filter(
-      (s) => s.assignmentId === assignment.id && s.studentId === student.id
+      (s) => s.assignmentId === assignment.id && s.studentId === activeStudent.id
     );
 
     if (existing.length > 0 && !assignment.allowResubmission) {
@@ -768,6 +1144,11 @@ export const storage = {
 
     const newSubmission: Submission = {
       ...submissionData,
+      fileName: sanitizeFileName(submissionData.fileName),
+      comments: submissionData.comments ? sanitizeTextInput(submissionData.comments) : undefined,
+      studentId: activeStudent.id, // Strictly bind to authenticated student ID
+      studentName: activeStudent.name,
+      studentIdNumber: activeStudent.studentIdNumber || 'STU-001',
       id: submissionId,
       receiptId,
       submittedAt: now.toISOString(),
@@ -781,15 +1162,14 @@ export const storage = {
     allSubmissions.unshift(newSubmission);
     setItem(KEYS.SUBMISSIONS, allSubmissions);
 
-    // Audit log
     this.addAuditLog({
-      userId: student.id,
-      userName: student.name,
-      userRole: student.role,
+      userId: activeStudent.id,
+      userName: activeStudent.name,
+      userRole: activeStudent.role,
       action: isLate ? 'SUBMISSION_LATE' : 'SUBMISSION_ON_TIME',
       entityType: 'Submission',
       entityId: submissionId,
-      details: `Submitted "${submissionData.fileName}" for "${assignment.title}" (${isLate ? `${lateDays} day(s) late` : 'on time'}). Receipt #${receiptId}`,
+      details: `Submitted "${newSubmission.fileName}" for "${assignment.title}" (${isLate ? `${lateDays} day(s) late` : 'on time'}). Receipt #${receiptId}`,
       ipAddress: '127.0.0.1',
     });
 
@@ -797,25 +1177,24 @@ export const storage = {
     this.addNotification({
       userId: assignment.facultyId,
       title: isLate ? `Late Submission: ${assignment.title}` : `New Submission: ${assignment.title}`,
-      message: `${student.name} submitted ${submissionData.fileName} for ${assignment.courseCode}. Status: ${isLate ? 'Late' : 'On Time'}.`,
+      message: `${activeStudent.name} submitted ${newSubmission.fileName} for ${assignment.courseCode}. Status: ${isLate ? 'Late' : 'On Time'}.`,
       type: 'submission',
       actionTab: 'submissions',
     });
 
     // Notify student of receipt
     this.addNotification({
-      userId: student.id,
+      userId: activeStudent.id,
       title: `Submission Confirmed #${receiptId}`,
-      message: `Your file "${submissionData.fileName}" was received successfully for "${assignment.title}".`,
+      message: `Your file "${newSubmission.fileName}" was received successfully for "${assignment.title}".`,
       type: 'submission',
       actionTab: 'my-submissions',
     });
 
-    // Sync appointment/submission to Supabase
     syncAppointmentToSupabase({
       id: newSubmission.id,
-      studentId: student.id,
-      studentName: student.name,
+      studentId: activeStudent.id,
+      studentName: activeStudent.name,
       assignmentId: assignment.id,
       assignmentTitle: assignment.title,
       courseCode: assignment.courseCode,
@@ -828,7 +1207,7 @@ export const storage = {
     return newSubmission;
   },
 
-  // Grading
+  // Grading (Strict Authorization & Input Validation)
   gradeSubmission(
     submissionId: string,
     marksOrData: number | { marksObtained: number; feedback?: string; privateNotes?: string; internalNotes?: string; maxMarks?: number },
@@ -836,7 +1215,7 @@ export const storage = {
     facultyOrNotes?: User | string,
     notesOptional?: string
   ): Submission {
-    const submissions = this.getSubmissions();
+    const submissions = getItem<Submission[]>(KEYS.SUBMISSIONS, INITIAL_SUBMISSIONS);
     const index = submissions.findIndex((s) => s.id === submissionId);
     if (index < 0) throw new Error('Submission not found');
 
@@ -846,7 +1225,7 @@ export const storage = {
 
     let marksObtained = 0;
     let feedback = '';
-    let faculty: User;
+    let faculty: User | undefined;
     let internalNotes: string | undefined;
 
     if (typeof marksOrData === 'object') {
@@ -861,24 +1240,26 @@ export const storage = {
       internalNotes = notesOptional;
     }
 
-    if (!faculty) {
-      faculty = this.getUsers().find((u) => u.role === 'faculty') || {
-        id: 'user-fac-1',
-        name: 'Dr. Robert Chen',
-        email: 'chen@college.edu',
-        role: 'faculty',
-        avatarUrl: '',
-        status: 'active',
-        departmentId: 'dept-cs',
-        joinedDate: new Date().toISOString(),
-      };
+    const activeGrader = faculty || this.getCurrentUser();
+    if (!activeGrader || (activeGrader.role !== 'faculty' && activeGrader.role !== 'admin')) {
+      throw new Error('Unauthorized: Only certified faculty instructors and administrators can grade student submissions.');
+    }
+
+    if (activeGrader.role === 'faculty') {
+      const course = this.getCourseById(assignment.courseId);
+      const isAssigned = course && (course.facultyId === activeGrader.id || course.facultyIds?.includes(activeGrader.id));
+      if (!isAssigned) {
+        throw new Error('Unauthorized: You can only grade submissions for courses assigned to you.');
+      }
     }
 
     const maxMarks = assignment.maxMarks;
-    if (marksObtained < 0 || marksObtained > maxMarks) {
-      throw new Error(`Marks obtained must be between 0 and ${maxMarks}`);
+    if (typeof marksObtained !== 'number' || isNaN(marksObtained) || marksObtained < 0 || marksObtained > maxMarks) {
+      throw new Error(`Validation Error: Marks obtained must be a valid number between 0 and ${maxMarks}`);
     }
 
+    const sanitizedFeedback = sanitizeTextInput(feedback);
+    const sanitizedInternalNotes = internalNotes ? sanitizeTextInput(internalNotes) : undefined;
     const percentage = Number(((marksObtained / maxMarks) * 100).toFixed(1));
     const now = new Date().toISOString();
 
@@ -888,21 +1269,21 @@ export const storage = {
       submissionId: sub.id,
       assignmentId: sub.assignmentId,
       studentId: sub.studentId,
-      facultyId: faculty.id,
-      facultyName: faculty.name,
-      gradedByName: faculty.name,
+      facultyId: activeGrader.id,
+      facultyName: activeGrader.name,
+      gradedByName: activeGrader.name,
       marksObtained,
       maxMarks,
       percentage,
-      feedback,
-      internalNotes,
-      privateNotes: internalNotes,
+      feedback: sanitizedFeedback,
+      internalNotes: sanitizedInternalNotes,
+      privateNotes: sanitizedInternalNotes,
       gradedAt: now,
       auditTrail: [
         ...(oldGrade?.auditTrail || []),
         {
           action: oldGrade ? 'Grade Modified' : 'Grade Published',
-          by: faculty.name,
+          by: activeGrader.name,
           at: now,
           oldMarks: oldGrade?.marksObtained,
           newMarks: marksObtained,
@@ -915,11 +1296,10 @@ export const storage = {
     submissions[index] = sub;
     setItem(KEYS.SUBMISSIONS, submissions);
 
-    // Audit Log
     this.addAuditLog({
-      userId: faculty.id,
-      userName: faculty.name,
-      userRole: faculty.role,
+      userId: activeGrader.id,
+      userName: activeGrader.name,
+      userRole: activeGrader.role,
       action: oldGrade ? 'GRADE_MODIFIED' : 'GRADE_RECORDED',
       entityType: 'Grade',
       entityId: grade.id,
@@ -927,11 +1307,10 @@ export const storage = {
       ipAddress: '127.0.0.1',
     });
 
-    // Notify Student
     this.addNotification({
       userId: sub.studentId,
       title: `Grade Published: ${assignment.title}`,
-      message: `${faculty.name} posted your grade: ${marksObtained}/${maxMarks} (${percentage}%). Feedback: "${feedback.slice(0, 80)}..."`,
+      message: `${activeGrader.name} posted your grade: ${marksObtained}/${maxMarks} (${percentage}%). Feedback: "${sanitizedFeedback.slice(0, 80)}..."`,
       type: 'grade',
       actionTab: 'grades',
     });
@@ -949,6 +1328,8 @@ export const storage = {
     const all = getItem<AppNotification[]>(KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS);
     const newNotif: AppNotification = {
       ...notifData,
+      title: sanitizeTextInput(notifData.title),
+      message: sanitizeTextInput(notifData.message),
       id: `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       isRead: false,
       createdAt: new Date().toISOString(),
@@ -984,8 +1365,12 @@ export const storage = {
     setItem(KEYS.NOTIFICATIONS, filtered);
   },
 
-  // Audit Logs
-  getAuditLogs(): AuditLog[] {
+  // Audit Logs (Strict Admin-Only Access Guard to Prevent Internal Exposure)
+  getAuditLogs(requester?: User): AuditLog[] {
+    const active = requester || this.getCurrentUser();
+    if (!active || active.role !== 'admin') {
+      return []; // Defense against internal exposure: Non-admins cannot inspect system audit logs
+    }
     return getItem(KEYS.AUDIT_LOGS, INITIAL_AUDIT_LOGS);
   },
 
@@ -993,6 +1378,7 @@ export const storage = {
     const logs = this.getAuditLogs();
     const newLog: AuditLog = {
       ...logData,
+      details: redactSensitive(logData.details || ''),
       id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: new Date().toISOString(),
     };

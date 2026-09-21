@@ -5,6 +5,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import { storage } from '../../services/storage';
 import confetti from 'canvas-confetti';
 import { ProgressBar } from '@/components/ui/progress-bar';
+import { validateUploadedFile, sanitizeFileName } from '../../lib/security';
 import {
   X,
   UploadCloud,
@@ -58,26 +59,14 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
 
   const validateFile = (selectedFile: File): boolean => {
     setError(null);
-    const ext = selectedFile.name.split('.').pop()?.toLowerCase() || '';
-
-    // Validate type
-    const isAllowedExt = assignment.allowedFileTypes.some(
-      (type) => type.toLowerCase() === ext || ext.includes(type.toLowerCase())
+    const result = validateUploadedFile(
+      { name: selectedFile.name, size: selectedFile.size, type: selectedFile.type },
+      assignment.allowedFileTypes,
+      assignment.maxFileSizeMb
     );
 
-    if (!isAllowedExt) {
-      setError(
-        `Invalid file type ".${ext}". Allowed file formats: ${assignment.allowedFileTypes.join(', ').toUpperCase()}`
-      );
-      return false;
-    }
-
-    // Validate size
-    const maxBytes = assignment.maxFileSizeMb * 1024 * 1024;
-    if (selectedFile.size > maxBytes) {
-      setError(
-        `File size (${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB) exceeds maximum permitted size of ${assignment.maxFileSizeMb} MB.`
-      );
+    if (!result.valid) {
+      setError(result.error || 'File validation failed.');
       return false;
     }
 
@@ -148,7 +137,7 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
           studentId: user.id,
           studentName: user.name,
           studentIdNumber: user.studentIdNumber || 'STU-001',
-          fileName: file.name,
+          fileName: sanitizeFileName(file.name),
           fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
           fileType: file.type || 'application/octet-stream',
           comments,

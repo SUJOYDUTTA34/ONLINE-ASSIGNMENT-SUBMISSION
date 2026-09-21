@@ -50,7 +50,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigateToSe
   // Derive stats based on role
   const courses = storage.getCourses();
   const assignments = storage.getAssignments();
-  const submissions = storage.getSubmissions();
+  const submissions = storage.getSubmissions(user);
 
   const studentEnrolledCourses = courses.filter((c) => c.enrolledStudentIds?.includes(user.id));
   const studentSubmissions = submissions.filter((s) => s.studentId === user.id);

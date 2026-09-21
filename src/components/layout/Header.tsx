@@ -395,7 +395,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, setActive
                           email: u.email,
                           role: u.role,
                           departmentName: u.departmentName,
-                          phone: u.phone,
                           status: u.status,
                           studentIdNumber: u.studentIdNumber,
                           employeeIdNumber: u.employeeIdNumber,

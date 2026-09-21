@@ -21,7 +21,7 @@ export const FacultyCourses: React.FC = () => {
     (c) => c.facultyId === user.id || (c.facultyIds && c.facultyIds.includes(user.id))
   );
   const assignments = storage.getAssignments();
-  const allUsers = storage.getUsers();
+  const allUsers = storage.getUsers(user);
 
   const [selectedCourseForRoster, setSelectedCourseForRoster] = useState<Course | null>(null);
   const [rosterSearch, setRosterSearch] = useState('');

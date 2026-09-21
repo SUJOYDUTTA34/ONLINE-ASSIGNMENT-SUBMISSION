@@ -36,7 +36,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   const { user: currentUser } = useAuth();
   const { showToast } = useNotifications();
 
-  const [users, setUsers] = useState<User[]>(() => storage.getUsers());
+  const [users, setUsers] = useState<User[]>(() => storage.getUsers(currentUser));
   const departments = storage.getDepartments();
 
   // Search and Filters

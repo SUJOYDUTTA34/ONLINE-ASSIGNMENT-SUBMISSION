@@ -41,13 +41,14 @@ export const StudentSubmissions: React.FC<StudentSubmissionsProps> = ({
   );
 
   const handleDownloadUploadedFile = (s: Submission) => {
-    const blob = new Blob([`File contents for ${s.fileName}\nSubmitted by ${s.studentName}`], {
-      type: s.fileType || 'application/octet-stream',
+    // SECURITY FIX: Force application/octet-stream binary download to prevent inline browser execution
+    const blob = new Blob([`Institutional Coursework Submission File: ${s.fileName}\nSubmitted By: ${s.studentName} (${s.studentIdNumber})\nSubmission Timestamp: ${s.submittedAt}\nDigital Receipt: ${s.receiptId}`], {
+      type: 'application/octet-stream',
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = s.fileName;
+    a.download = s.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
     a.click();
     URL.revokeObjectURL(url);
   };
