@@ -44,8 +44,9 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!isOpen || !assignment || !user) {
-    return (
+  // Always render the hidden input so external triggers can find it
+  return (
+    <>
       <input
         ref={fileInputRef}
         type="file"
@@ -65,8 +66,36 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
         }}
         className="hidden"
       />
-    );
-  }
+
+      {!isOpen || !assignment || !user ? null : (
+        <div id="submit-assignment-modal-backdrop" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
+          <div
+            id="submit-assignment-dialog"
+            className="relative w-full max-w-xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-8"
+          >
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">
+                    {assignment.courseCode}
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    Submission Portal
+                  </span>
+                </div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Submit: {assignment.title}
+                </h2>
+              </div>
+              <button
+                onClick={onClose}
+                disabled={isUploading}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
   const now = new Date();
   const dueDate = new Date(assignment.dueAt);
