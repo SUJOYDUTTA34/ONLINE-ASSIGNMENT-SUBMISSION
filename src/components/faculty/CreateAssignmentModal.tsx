@@ -33,11 +33,15 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
   const { user } = useAuth();
   const { showToast } = useNotifications();
 
-  const facultyCourses = user
-    ? storage.getCourses().filter(
-        (c) => c.facultyId === user.id || (c.facultyIds && c.facultyIds.includes(user.id))
-      )
+  const allCourses = storage.getCourses();
+  const matchedCourses = user
+    ? user.role === 'admin'
+      ? allCourses
+      : allCourses.filter(
+          (c) => c.facultyId === user.id || (c.facultyIds && c.facultyIds.includes(user.id))
+        )
     : [];
+  const facultyCourses = matchedCourses.length > 0 ? matchedCourses : allCourses;
 
   // Form State
   const [title, setTitle] = useState(initialAssignment?.title || '');

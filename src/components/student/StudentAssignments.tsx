@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../services/storage';
-import { Assignment } from '../../types';
+import { Assignment, Submission } from '../../types';
 import {
   Search,
   Filter,
@@ -14,43 +14,115 @@ import {
   CheckCircle2,
   AlertCircle,
   FileText,
+  Trash2,
+  PlusCircle,
 } from 'lucide-react';
+import { useNotifications } from '../../context/NotificationContext';
 
 interface StudentAssignmentsProps {
   onSelectAssignment: (assignment: Assignment) => void;
   onOpenSubmitModal: (assignment: Assignment) => void;
   onOpenQuickSubmit?: () => void;
+  initialCourseId?: string;
 }
 
 export const StudentAssignments: React.FC<StudentAssignmentsProps> = ({
   onSelectAssignment,
   onOpenSubmitModal,
   onOpenQuickSubmit,
+  initialCourseId = 'ALL',
 }) => {
   const { user } = useAuth();
-  if (!user) return null;
-
-  const courses = storage.getCourses().filter((c) => c.enrolledStudentIds.includes(user.id));
-  const enrolledCourseIds = courses.map((c) => c.id);
-
-  const assignments = storage.getAssignments().filter(
-    (a) => a.status === 'published' && enrolledCourseIds.includes(a.courseId)
-  );
-
-  const studentSubmissions = storage.getSubmissions().filter((s) => s.studentId === user.id);
+  const { showToast } = useNotifications();
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCourse, setSelectedCourse] = useState('ALL');
+  const [selectedCourse, setSelectedCourse] = useState(initialCourseId || 'ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [sortBy, setSortBy] = useState<'due-asc' | 'due-desc' | 'marks'>('due-asc');
+
+  useEffect(() => {
+    if (initialCourseId && initialCourseId !== 'ALL') {
+      setSelectedCourse(initialCourseId);
+    }
+  }, [initialCourseId]);
+
+  if (!user) return null;
+
+  const courses = storage.getCourses();
+  const assignments = storage
+    .getAssignments(user)
+    .filter((a) => a.status === 'published');
+
+  const [studentSubmissions, setStudentSubmissions] = useState<Submission[]>(() =>
+    storage.getSubmissions().filter((s) => s.studentId === user?.id)
+  );
+
+  const handleDeleteSubmission = (submissionId: string, title: string) => {
+    try {
+      storage.deleteSubmission(submissionId, user);
+      setStudentSubmissions((prev) => prev.filter((s) => s.id !== submissionId));
+      showToast({
+        type: 'success',
+        title: 'Submission Deleted',
+        message: `Your submission for "${title}" has been removed.`,
+      });
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Delete Failed',
+        message: err.message || 'Failed to delete submission.',
+      });
+    }
+  };
+
+  const handleCreateCourseworkForCourse = (courseId: string) => {
+    const course = courses.find((c) => c.id === courseId);
+    if (!course) return;
+
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 30);
+
+    const newAsg: Assignment = {
+      id: `asg-${Date.now()}`,
+      courseId: course.id,
+      courseCode: course.code || course.courseCode || 'COURSE',
+      courseName: course.title || course.courseName || 'Coursework',
+      facultyId: course.facultyId || (course.facultyIds && course.facultyIds[0]) || user.id,
+      facultyName: course.facultyName || 'Course Instructor',
+      title: `${course.code || course.courseCode} — Coursework Submission`,
+      description: `Submit your assignments or project coursework for ${course.title || course.courseName}.`,
+      instructions: 'Upload your completed file (PDF, Word, Excel, ZIP, code, etc.) up to 100 MB.',
+      publishedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      dueAt: dueDate.toISOString(),
+      maxMarks: 100,
+      allowedFileTypes: ['all', 'pdf', 'docx', 'zip', 'xlsx', 'pptx'],
+      maxFileSizeMb: 100,
+      allowLateSubmission: true,
+      latePenaltyPercentPerDay: 5,
+      allowResubmission: true,
+      maxResubmissions: 5,
+      status: 'published',
+      resources: [],
+    };
+
+    const saved = storage.saveAssignment(newAsg, user);
+    showToast({
+      type: 'success',
+      title: 'Coursework Initialized',
+      message: `Coursework submission ready for ${course.code || course.courseCode}.`,
+    });
+    onOpenSubmitModal(saved);
+  };
 
   const filtered = assignments.filter((a) => {
     // Search query
     const matchesSearch =
       a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       a.courseCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.description.toLowerCase().includes(searchQuery.toLowerCase());
+      a.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.courseName.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (!matchesSearch) return false;
 
@@ -127,7 +199,7 @@ export const StudentAssignments: React.FC<StudentAssignmentsProps> = ({
             onChange={(e) => setSelectedCourse(e.target.value)}
             className="px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
           >
-            <option value="ALL">All Enrolled Courses</option>
+            <option value="ALL">📚 All Courses ({courses.length})</option>
             {courses.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.code || c.courseCode} — {c.title || c.courseName}
@@ -165,12 +237,26 @@ export const StudentAssignments: React.FC<StudentAssignmentsProps> = ({
 
       {/* Assignment Grid */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+        <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8">
           <FileText className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">No Assignments Found</h3>
           <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-            No coursework matching your current search and filter criteria. Try resetting the filters.
+            {selectedCourse !== 'ALL'
+              ? 'No assignment has been published for this course yet.'
+              : 'No coursework matching your current search and filter criteria.'}
           </p>
+
+          {selectedCourse !== 'ALL' && (
+            <div className="mt-4">
+              <button
+                onClick={() => handleCreateCourseworkForCourse(selectedCourse)}
+                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold inline-flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
+              >
+                <PlusCircle className="w-4 h-4" />
+                + Upload Coursework / Submission for this Course
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -181,7 +267,7 @@ export const StudentAssignments: React.FC<StudentAssignmentsProps> = ({
             return (
               <div
                 key={asg.id}
-                className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-blue-500/50 transition-all flex flex-col justify-between"
+                className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-blue-500/50 transition-all flex flex-col justify-between group"
               >
                 <div>
                   {/* Top tags */}
@@ -214,60 +300,79 @@ export const StudentAssignments: React.FC<StudentAssignmentsProps> = ({
                   </div>
 
                   {/* Title & Description */}
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-snug line-clamp-1">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-snug line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {asg.title}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
                     {asg.description}
                   </p>
 
-                  {/* Meta Specs */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
+                  {/* Metadata block */}
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Due Date:</span>
-                      <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-blue-500" />
-                        {new Date(asg.dueAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      <span className="text-slate-400 flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-blue-500" /> Due Date:
+                      </span>
+                      <span className={`font-semibold ${isOverdue && !submission ? 'text-rose-600 dark:text-rose-400' : ''}`}>
+                        {new Date(asg.dueAt).toLocaleDateString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Max Score:</span>
+                      <span className="text-slate-400 flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" /> Time:
+                      </span>
+                      <span className="font-medium text-slate-500 dark:text-slate-400">
+                        {new Date(asg.dueAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 flex items-center gap-1">
+                        <Award className="w-3.5 h-3.5 text-amber-500" /> Maximum Marks:
+                      </span>
                       <span className="font-semibold text-slate-800 dark:text-slate-200">
-                        {asg.maxMarks} Points
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Allowed Formats:</span>
-                      <span className="font-mono uppercase text-[10px] text-slate-700 dark:text-slate-300">
-                        {asg.allowedFileTypes.join(', ')}
+                        {asg.maxMarks} pts
                       </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Card Actions */}
-                <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
-                  <button
-                    onClick={() => onSelectAssignment(asg)}
-                    className="flex-1 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 transition-colors"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    Details
-                  </button>
-
-                  {(!submission || asg.allowResubmission) && (
+                <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1">
                     <button
-                      onClick={() => {
-                        onOpenSubmitModal(asg);
-                        document.getElementById('assignmentFile')?.click();
-                      }}
-                      className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors min-h-[44px]"
+                      id={`view-asg-details-btn-${asg.id}`}
+                      onClick={() => onSelectAssignment(asg)}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      <span>📄 {submission ? 'Resubmit Assignment' : 'Submit Assignment'}</span>
+                      <Eye className="w-3.5 h-3.5" />
+                      Details
                     </button>
-                  )}
+
+                    {submission && (
+                      <button
+                        onClick={() => handleDeleteSubmission(submission.id, asg.title)}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+                        title="Delete/Withdraw submission"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    id={`submit-asg-btn-${asg.id}`}
+                    onClick={() => onOpenSubmitModal(asg)}
+                    className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5" />
+                    <span>{submission ? 'Resubmit' : 'Submit File'}</span>
+                  </button>
                 </div>
               </div>
             );

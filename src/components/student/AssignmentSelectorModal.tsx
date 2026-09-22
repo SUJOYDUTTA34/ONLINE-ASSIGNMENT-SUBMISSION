@@ -30,12 +30,9 @@ export const AssignmentSelectorModal: React.FC<AssignmentSelectorModalProps> = (
 
   if (!isOpen || !user) return null;
 
-  const courses = storage.getCourses().filter((c) => c.enrolledStudentIds.includes(user.id));
-  const enrolledCourseIds = courses.map((c) => c.id);
-
-  const assignments = storage.getAssignments().filter(
-    (a) => a.status === 'published' && enrolledCourseIds.includes(a.courseId)
-  );
+  const assignments = storage
+    .getAssignments(user)
+    .filter((a) => a.status === 'published');
 
   const studentSubmissions = storage.getSubmissions().filter((s) => s.studentId === user.id);
 

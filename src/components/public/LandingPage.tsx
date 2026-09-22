@@ -8,6 +8,7 @@ import { ShinyButton } from '@/components/ui/shiny-button';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { SonarGrid } from '@/components/ui/sonar-grid';
 import academicLogo from '../../assets/images/academic_crest_logo_1789753031183.jpg';
+import { ThemeToggle } from '../common/ThemeToggle';
 import {
   GraduationCap,
   UploadCloud,
@@ -35,8 +36,12 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister }) => {
   const [howItWorksRole, setHowItWorksRole] = useState<'student' | 'faculty'>('student');
+  const [liveTab, setLiveTab] = useState<'courses' | 'submissions' | 'feedback'>('courses');
 
   const stats = storage.getSystemStats();
+  const coursesList = storage.getCourses();
+  const assignmentsList = storage.getAssignments();
+  const submissionsList = storage.getSubmissions();
 
   const studentSteps = [
     { num: '01', title: 'Sign In to Portal', desc: 'Secure single-sign-on using institutional student ID and academic credentials.' },
@@ -154,8 +159,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
             </a>
           </div>
 
-          {/* Action Buttons - Fully Responsive on Mobile, Tablet, Laptop, PC */}
+          {/* Action Buttons - Fully Responsive on Mobile, Tablet, Laptop, PC with Dark/Light Toggle */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            <ThemeToggle
+              id="landing-navbar-theme-toggle"
+              variant="button"
+              className="h-8 w-8 sm:h-9 sm:w-9"
+            />
             <ShinyButton
               id="landing-login-btn"
               type="button"
@@ -268,7 +278,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
             </motion.div>
           </motion.div>
 
-          {/* Academic Illustration / Dashboard Preview */}
+          {/* Dynamic Live Activity & Submission Preview */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -277,80 +287,153 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
           >
             <div className="relative rounded-2xl p-2 bg-gradient-to-b from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-900 shadow-2xl border border-slate-200/80 dark:border-slate-700">
               <div className="rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                {/* Mock Browser Header */}
-                <div className="px-4 py-3 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+                {/* Mock Browser Header with Tab Navigation */}
+                <div className="px-4 py-3 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700/60 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className="w-3 h-3 rounded-full bg-rose-400 inline-block" />
                     <span className="w-3 h-3 rounded-full bg-amber-400 inline-block" />
                     <span className="w-3 h-3 rounded-full bg-emerald-400 inline-block" />
                     <span className="text-xs text-slate-500 dark:text-slate-400 font-mono ml-2">
-                      portal.campus.edu/student/assignments
+                      portal.campus.edu/live-activity-preview
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                      ● Live Preview
-                    </span>
+
+                  {/* Live Tab Switcher */}
+                  <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <button
+                      type="button"
+                      onClick={() => setLiveTab('courses')}
+                      className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                        liveTab === 'courses'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      📚 Courses ({coursesList.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLiveTab('submissions')}
+                      className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                        liveTab === 'submissions'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      📝 Submissions ({submissionsList.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLiveTab('feedback')}
+                      className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                        liveTab === 'feedback'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      💬 Faculty Feedback
+                    </button>
                   </div>
                 </div>
 
-                {/* Simulated UI Content */}
-                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50/50 dark:bg-slate-900/50">
-                  <motion.div
-                    whileHover={{ y: -3 }}
-                    className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs transition-shadow"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">CS-301</span>
-                      <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium">Due in 5 days</span>
+                {/* Tab Content Area */}
+                <div className="p-6 bg-slate-50/50 dark:bg-slate-900/50 min-h-[240px]">
+                  {liveTab === 'courses' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {assignmentsList.slice(0, 3).map((assignment) => (
+                        <div
+                          key={assignment.id}
+                          className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{assignment.courseCode}</span>
+                            <span className="text-[10px] bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">Max: {assignment.maxMarks} Marks</span>
+                          </div>
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">{assignment.title}</h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{assignment.facultyName}</p>
+                          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs">
+                            <span className="text-slate-400 font-mono">Due: {assignment.dueAt?.split('T')[0] || 'Ongoing'}</span>
+                            <span className="font-semibold text-blue-600">Active Coursework</span>
+                          </div>
+                        </div>
+                      ))}
+                      {assignmentsList.length === 0 && (
+                        <div className="col-span-3 text-center py-10 text-slate-500 text-sm">
+                          No courses or assignments posted yet. Sign in as faculty to add courses and post assignments!
+                        </div>
+                      )}
                     </div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Linked List Implementation</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Prof. Robert Chen • Max Marks: 20</p>
-                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
-                      <span className="text-xs text-slate-400">PDF, DOCX, ZIP</span>
-                      <span className="text-xs font-semibold text-blue-600 hover:underline">Submit Now →</span>
-                    </div>
-                  </motion.div>
+                  )}
 
-                  <motion.div
-                    whileHover={{ y: -3 }}
-                    className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs transition-shadow"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">CS-402</span>
-                      <span className="text-[10px] bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">Published</span>
+                  {liveTab === 'submissions' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {submissionsList.slice(0, 3).map((sub) => (
+                        <div
+                          key={sub.id}
+                          className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{sub.courseCode}</span>
+                            <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold">
+                              {sub.grade ? `Score: ${sub.grade.marksObtained}/${sub.grade.maxMarks}` : 'Pending Review'}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">{sub.assignmentTitle}</h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Student: {sub.studentName} ({sub.studentIdNumber})</p>
+                          {sub.grade && (
+                            <div className="my-2.5">
+                              <ProgressBar
+                                value={sub.grade.percentage}
+                                variant="success"
+                                size="sm"
+                                label={<span className="text-[10px] text-slate-400">Percentage: {sub.grade.percentage}%</span>}
+                                showValue
+                              />
+                            </div>
+                          )}
+                          <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-400">
+                            <span>Receipt: #{sub.receiptId}</span>
+                            <span className="font-semibold text-emerald-600 uppercase">{sub.status}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {submissionsList.length === 0 && (
+                        <div className="col-span-3 text-center py-10 text-slate-500 text-sm">
+                          No submissions recorded yet. Submit assignments from the student portal to view live tracking here!
+                        </div>
+                      )}
                     </div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">RESTful API & Docker</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Prof. Sarah Jenkins • Max Marks: 50</p>
-                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
-                      <span className="text-xs text-slate-400">ZIP, PDF</span>
-                      <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">View Details</span>
-                    </div>
-                  </motion.div>
+                  )}
 
-                  <motion.div
-                    whileHover={{ y: -3 }}
-                    className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs transition-shadow"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">CS-301</span>
-                      <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold">Graded: 19.5/20</span>
+                  {liveTab === 'feedback' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {submissionsList.filter(s => s.grade).slice(0, 2).map((sub) => (
+                        <div
+                          key={sub.id}
+                          className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">{sub.courseCode} • {sub.assignmentTitle}</span>
+                              <span className="text-xs font-bold text-emerald-600">{sub.grade?.marksObtained}/{sub.grade?.maxMarks} ({sub.grade?.percentage}%)</span>
+                            </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-300 italic bg-slate-50 dark:bg-slate-900/80 p-3 rounded-lg border border-slate-200/60 dark:border-slate-700 mt-2">
+                              "{sub.grade?.feedback || 'Excellent work!'}"
+                            </p>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-slate-400">
+                            <span>Evaluated by: <strong className="text-slate-700 dark:text-slate-200">{sub.grade?.facultyName || 'Prof. Somen Roy'}</strong></span>
+                            <span>{sub.grade?.gradedAt?.split('T')[0] || 'Recently'}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {submissionsList.filter(s => s.grade).length === 0 && (
+                        <div className="col-span-2 text-center py-10 text-slate-500 text-sm">
+                          No faculty feedback published yet. Graded assignments and professor reviews will appear here in real time!
+                        </div>
+                      )}
                     </div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Binary Search Trees & AVL</h4>
-                    <div className="my-2.5">
-                      <ProgressBar
-                        value={97.5}
-                        variant="success"
-                        size="sm"
-                        label={<span className="text-[10px] text-slate-400">Score & Integrity Met</span>}
-                        showValue
-                      />
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
-                      <span className="text-xs text-emerald-600 font-medium">Feedback Available</span>
-                      <span className="text-xs font-semibold text-blue-600 hover:underline">View Receipt</span>
-                    </div>
-                  </motion.div>
+                  )}
                 </div>
               </div>
             </div>

@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../services/storage';
 import { PasswordStrength } from '@/components/ui/password-strength';
 import { ShinyButton } from '@/components/ui/shiny-button';
+import { ThemeToggle } from '../common/ThemeToggle';
 import {
   Mail,
   Lock,
@@ -19,6 +20,7 @@ import {
   ShieldAlert,
   Loader2,
   X,
+  Shield,
 } from 'lucide-react';
 
 export interface AuthFormProps {
@@ -36,7 +38,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   onClose,
   showCloseButton = false,
 }) => {
-  const { login, register } = useAuth();
+  const { login, loginWithGoogle, register } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>(defaultMode);
 
   // Login form state
@@ -49,7 +51,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [role, setRole] = useState<'student' | 'faculty'>('student');
+  const [role, setRole] = useState<'student' | 'faculty' | 'admin'>('student');
+  const [adminPasskey, setAdminPasskey] = useState('');
   const [identifier, setIdentifier] = useState('');
   const [departmentId, setDepartmentId] = useState('dept-1');
   const [program, setProgram] = useState('');
@@ -72,6 +75,19 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   const [loading, setLoading] = useState(false);
 
   const departments = storage.getDepartments();
+
+  const handleGoogle = async () => {
+    setError(null);
+    setLoading(true);
+    const res = await loginWithGoogle();
+    setLoading(false);
+    if (res.success) {
+      if (onSuccess) onSuccess();
+      if (onClose) onClose();
+    } else {
+      setError(res.message || 'Google authentication failed.');
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,7 +135,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         ? identifier.trim() || `STU-${Date.now().toString().slice(-4)}`
         : identifier.trim() || `FAC-${Date.now().toString().slice(-4)}`;
 
-    const effectiveProgram = program.trim() || (role === 'student' ? 'B.S. Computer Science' : 'Department Faculty');
+    const effectiveProgram = program.trim() || (role === 'student' ? 'B.S. Computer Science' : role === 'admin' ? 'System Administration' : 'Department Faculty');
 
     setLoading(true);
     const res = await register({
@@ -129,11 +145,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({
       role,
       departmentId,
       studentIdNumber: role === 'student' ? effectiveId : undefined,
-      employeeIdNumber: role === 'faculty' ? effectiveId : undefined,
+      employeeIdNumber: role !== 'student' ? effectiveId : undefined,
       semester: role === 'student' ? semester : undefined,
       program: effectiveProgram,
       password,
-    });
+      adminPasskey,
+    } as any);
     setLoading(false);
 
     if (res.success) {
@@ -141,7 +158,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
       setRegisteredInfo({
         name,
         email,
-        role: role === 'student' ? 'Student' : 'Faculty Member',
+        role: role === 'student' ? 'Student' : role === 'admin' ? 'Administrator' : 'Faculty Member',
         idNumber: effectiveId,
         department: deptObj ? deptObj.name : 'Computer Science & Engineering',
         program: effectiveProgram,
@@ -153,8 +170,17 @@ export const AuthForm: React.FC<AuthFormProps> = ({
 
   return (
     <div className="w-full max-w-md mx-auto p-6 sm:p-8 rounded-[28px] bg-white dark:bg-neutral-900 border border-neutral-200/90 dark:border-neutral-800 shadow-xl transition-all">
-      {/* Top Header & Optional Close */}
+      {/* Top Header with Dark/Light Toggle & Optional Close */}
       <div className="relative mb-6 text-center">
+        {/* Dark / Light Mode Toggle in Auth Modal */}
+        <div className="absolute -top-2 -left-2">
+          <ThemeToggle
+            id="auth-modal-theme-toggle"
+            variant="button"
+            className="h-8 w-8 !p-1.5 rounded-full border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300"
+          />
+        </div>
+
         {showCloseButton && onClose && (
           <button
             type="button"

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { storage } from '../../services/storage';
 import { AuditLog } from '../../types';
+import { useNotifications } from '../../context/NotificationContext';
 import {
   ScrollText,
   Search,
@@ -14,11 +15,39 @@ import {
 } from 'lucide-react';
 
 export const AuditLogsView: React.FC = () => {
+  const { showToast } = useNotifications();
   const [logs] = useState<AuditLog[]>(() => storage.getAuditLogs());
+  const [deletedUsers, setDeletedUsers] = useState<any[]>(() => storage.getDeletedUsers());
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAction, setSelectedAction] = useState('ALL');
   const [selectedRole, setSelectedRole] = useState('ALL');
+
+  const handleRestoreUser = (userId: string, userName: string) => {
+    try {
+      const res = storage.restoreDeletedUser(userId);
+      if (res.success) {
+        setDeletedUsers(storage.getDeletedUsers());
+        showToast({
+          type: 'success',
+          title: 'User Restored (Undo Successful)',
+          message: `${userName} has been successfully restored to active institutional directory.`,
+        });
+      } else {
+        showToast({
+          type: 'error',
+          title: 'Restoration Failed',
+          message: res.message,
+        });
+      }
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Error',
+        message: err.message || 'Could not restore user.',
+      });
+    }
+  };
 
   const filteredLogs = logs.filter((log) => {
     const matchesSearch =
@@ -97,6 +126,44 @@ export const AuditLogsView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Recently Deleted Users Undo / Restore Archive Panel */}
+      {deletedUsers.length > 0 && (
+        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+              <h3 className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                Recently De-provisioned User Accounts ({deletedUsers.length}) — Undo / Restore Available
+              </h3>
+            </div>
+            <span className="text-[10px] text-amber-700 dark:text-amber-400">
+              Restoring revokes deletion and restores institutional credentials instantly
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {deletedUsers.map((item) => (
+              <div
+                key={item.user.id}
+                className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800 flex items-center justify-between gap-2 shadow-xs"
+              >
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">{item.user.name}</p>
+                  <p className="text-[10px] text-slate-500">{item.user.email} • <span className="uppercase text-purple-600 font-bold">{item.user.role}</span></p>
+                  <p className="text-[9px] text-slate-400 mt-0.5">Deleted by: {item.deletedBy}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRestoreUser(item.user.id, item.user.name)}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold shrink-0 shadow-xs flex items-center gap-1 cursor-pointer"
+                >
+                  ↺ Undo
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3">
@@ -207,8 +274,22 @@ export const AuditLogsView: React.FC = () => {
                       {log.targetEntity}
                     </td>
 
-                    <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300 max-w-xs truncate">
-                      {log.details}
+                    <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300 max-w-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate">{log.details}</span>
+                        {log.action === 'USER_DELETED' && deletedUsers.some((d) => d.user.id === log.entityId) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const target = deletedUsers.find((d) => d.user.id === log.entityId);
+                              if (target) handleRestoreUser(target.user.id, target.user.name);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold shrink-0 flex items-center gap-1 shadow-xs cursor-pointer"
+                          >
+                            ↺ Undo Deletion
+                          </button>
+                        )}
+                      </div>
                     </td>
 
                     <td className="py-3.5 px-4 font-mono text-[10px] text-slate-400">

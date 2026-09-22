@@ -1,0 +1,32 @@
+[
+  {
+    "id": "meta_d213cbff-b3e4-4185-a7a2-519b83b79f37",
+    "fileKey": "secfile_9c1406ab-64d0-47d7-9274-72129eb7b4d3_af566ea653d9.pdf",
+    "originalFilename": "sample.pdf",
+    "fileSize": 47,
+    "fileSizeFormatted": "0 KB",
+    "mimeType": "application/pdf",
+    "extension": "pdf",
+    "sha256Hash": "2ab94463e399ce58a21df28c88b429dd6c64637faadd1de7d8d44f10e4132415",
+    "uploadTime": "2026-09-22T07:33:07.841Z",
+    "user": {
+      "id": "user-student-1",
+      "name": "Sujoy Dutta",
+      "email": "",
+      "role": "student",
+      "studentIdNumber": ""
+    },
+    "assignment": {
+      "id": "asg-1",
+      "title": "Lab Exercise 1",
+      "courseId": "",
+      "courseCode": "",
+      "courseName": ""
+    },
+    "submission": {
+      "id": "SUB-3259",
+      "receiptId": "REC-MUCCXE9S",
+      "version": 1
+    }
+  }
+]

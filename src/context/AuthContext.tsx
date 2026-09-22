@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { storage } from '../services/storage';
-import { syncUserToSupabase } from '../services/supabaseClient';
 import {
   createSessionToken,
   verifySessionToken,
@@ -19,6 +18,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password?: string, rememberMe?: boolean) => Promise<{ success: boolean; message?: string }>;
+  loginWithGoogle: () => Promise<{ success: boolean; message?: string }>;
   register: (data: Partial<User> & { password?: string }) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   switchDemoUser: (role: UserRole) => void;
@@ -136,6 +136,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
+  const loginWithGoogle = async () => {
+    return { success: false, message: 'Google Sign-In is not configured.' };
+  };
+
   const register = async (data: Partial<User> & { password?: string }) => {
     setIsLoading(true);
     await new Promise((r) => setTimeout(r, 400));
@@ -151,8 +155,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, message: 'An account with this email address already exists.' };
     }
 
-    // Admins cannot be created via standard self-registration
-    const role: UserRole = data.role === 'faculty' ? 'faculty' : 'student';
+    // Allow student, faculty, and administrator self-registration with dedicated role selection
+    const role: UserRole = data.role === 'admin' ? 'admin' : data.role === 'faculty' ? 'faculty' : 'student';
+
+    if (role === 'admin' && (data as any).adminPasskey !== 'ADMIN-2026') {
+      setIsLoading(false);
+      return { success: false, message: 'Administrator registration requires a valid Admin Security Passkey (ADMIN-2026).' };
+    }
 
     const depts = storage.getDepartments();
     const dept = depts.find((d) => d.id === data.departmentId) || depts[0];
@@ -165,7 +174,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: data.email,
       role,
       avatarUrl:
-        role === 'faculty'
+        role === 'admin'
+          ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+          : role === 'faculty'
           ? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
           : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
       status: 'active',
@@ -173,9 +184,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       departmentId: dept.id,
       departmentName: dept.name,
       studentIdNumber: role === 'student' ? (data.studentIdNumber || `STU-${Date.now().toString().slice(-4)}`) : undefined,
-      employeeIdNumber: role === 'faculty' ? (data.employeeIdNumber || `FAC-${Date.now().toString().slice(-4)}`) : undefined,
+      employeeIdNumber: role !== 'student' ? (data.employeeIdNumber || (role === 'admin' ? `ADM-${Date.now().toString().slice(-4)}` : `FAC-${Date.now().toString().slice(-4)}`)) : undefined,
       semester: role === 'student' ? (data.semester || 1) : undefined,
-      program: data.program || (role === 'student' ? 'Undergraduate Degree' : 'Department Faculty'),
+      program: data.program || (role === 'student' ? 'Undergraduate Degree' : role === 'admin' ? 'System Administration' : 'Department Faculty'),
       joinedDate: new Date().toISOString().split('T')[0],
       password: hashedPassword,
     };
@@ -189,30 +200,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(newUser);
     storage.setCurrentUserId(newUser.id);
 
-    try {
-      await syncUserToSupabase({
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        departmentName: newUser.departmentName,
-        status: newUser.status,
-        studentIdNumber: newUser.studentIdNumber,
-        employeeIdNumber: newUser.employeeIdNumber,
-        program: newUser.program,
-        joinedDate: newUser.joinedDate,
-      });
-    } catch {
-      // Sanitized: No personal payload in error log
-      console.error('Supabase registration directory sync notice: sync deferred');
-    }
-
     if (role === 'student') {
       const courses = storage.getCourses();
       courses.slice(0, 3).forEach((c) => {
         if (!c.enrolledStudentIds.includes(newUser.id)) {
           c.enrolledStudentIds.push(newUser.id);
-          storage.saveCourse(c);
+          storage.saveCourse(c, undefined, true);
         }
       });
     }
@@ -404,6 +397,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         isLoading,
         login,
+        loginWithGoogle,
         register,
         logout,
         switchDemoUser,

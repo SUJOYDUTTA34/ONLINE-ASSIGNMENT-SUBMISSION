@@ -31,14 +31,15 @@ export const FacultyAssignments: React.FC<FacultyAssignmentsProps> = ({
 
   if (!user) return null;
 
-  const courses = storage.getCourses().filter(
-    (c) => c.facultyId === user.id || (c.facultyIds && c.facultyIds.includes(user.id))
-  );
-  const facultyCourseIds = courses.map((c) => c.id);
+  const allCourses = storage.getCourses();
+  const matchedCourses = user.role === 'admin'
+    ? allCourses
+    : allCourses.filter(
+        (c) => c.facultyId === user.id || (c.facultyIds && c.facultyIds.includes(user.id))
+      );
+  const courses = matchedCourses.length > 0 ? matchedCourses : allCourses;
 
-  const [assignments, setAssignments] = useState<Assignment[]>(() =>
-    storage.getAssignments().filter((a) => facultyCourseIds.includes(a.courseId))
-  );
+  const [assignments, setAssignments] = useState<Assignment[]>(() => storage.getAssignments(user));
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('ALL');
@@ -151,7 +152,22 @@ export const FacultyAssignments: React.FC<FacultyAssignmentsProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-              {filteredAssignments.length === 0 ? (
+              {assignments.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-14 text-center">
+                    <FileText className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+                    <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">No assignments posted yet</p>
+                    <p className="text-xs text-slate-500 mt-1 mb-4">Create coursework, problem sets, or submission deadlines for students.</p>
+                    <button
+                      onClick={onOpenCreateModal}
+                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      <span>Create Your First Assignment</span>
+                    </button>
+                  </td>
+                </tr>
+              ) : filteredAssignments.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-10 text-center text-slate-400">
                     No assignments found matching your filter criteria.
@@ -233,6 +249,16 @@ export const FacultyAssignments: React.FC<FacultyAssignmentsProps> = ({
 
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {onSelectAssignmentSubmissions && (
+                            <button
+                              onClick={() => onSelectAssignmentSubmissions(a.id)}
+                              className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/80 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 font-semibold text-xs border border-blue-200/80 dark:border-blue-800/80 flex items-center gap-1 transition-colors"
+                              title="View Submissions Roster"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                              <span>View Submissions ({subsCount})</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => setEditingAssignment(a)}
                             className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"

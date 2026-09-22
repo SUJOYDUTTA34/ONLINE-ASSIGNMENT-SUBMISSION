@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { storage } from '../../services/storage';
 import { Course } from '../../types';
+import { UploadDocumentModal } from '../common/UploadDocumentModal';
 import {
   BookOpen,
   PlusCircle,
@@ -15,6 +16,7 @@ import {
   Building2,
   FileText,
   AlertCircle,
+  Download,
 } from 'lucide-react';
 
 interface CourseManagementProps {
@@ -40,6 +42,9 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({
   // Modal State
   const [modalOpen, setModalOpen] = useState(isAddModalOpen);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [selectedCourseForDocs, setSelectedCourseForDocs] = useState<Course | null>(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Form Fields
   const [code, setCode] = useState('');
@@ -51,6 +56,40 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({
   const [syllabus, setSyllabus] = useState('');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const activeCourseForDocs = selectedCourseForDocs
+    ? (storage.getCourseById(selectedCourseForDocs.id) || selectedCourseForDocs)
+    : null;
+
+  const handleDownloadDocument = (doc: any) => {
+    const link = document.createElement('a');
+    link.href = doc.dataUrl;
+    link.download = doc.fileName || doc.name;
+    link.click();
+  };
+
+  const handleDeleteDocument = async (doc: any) => {
+    if (!activeCourseForDocs) return;
+    if (window.confirm(`Are you sure you want to delete "${doc.name}"? This action is permanent.`)) {
+      if (doc.fileKey) {
+        try {
+          await fetch(`/api/files/${encodeURIComponent(doc.fileKey)}`, { method: 'DELETE' });
+        } catch (e) {
+          console.warn('Backend file deletion sync error:', e);
+        }
+      }
+
+      storage.deleteCourseDocument(activeCourseForDocs.id, doc.id, currentUser || undefined);
+
+      setCourses(storage.getCourses());
+      setRefreshTrigger((prev) => prev + 1);
+      showToast({
+        type: 'success',
+        title: 'Document Deleted',
+        message: `"${doc.name}" was removed from this course.`,
+      });
+    }
+  };
 
   React.useEffect(() => {
     if (isAddModalOpen) {
@@ -278,15 +317,23 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            onClick={() => setSelectedCourseForDocs(c)}
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-300 flex items-center gap-1 cursor-pointer"
+                            title="Manage Reference Materials"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-blue-500" />
+                            <span className="text-[10px] font-bold hidden md:inline">{c.documents?.length || 0} Docs</span>
+                          </button>
+                          <button
                             onClick={() => handleOpenEdit(c)}
-                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-pointer"
                             title="Edit Course"
                           >
                             <Edit className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleDeleteCourse(c.id, c.code || c.courseCode || 'Course')}
-                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-500"
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-500 cursor-pointer"
                             title="Delete Course"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -453,29 +500,142 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setModalOpen(false);
-                    if (onCloseAddModal) onCloseAddModal();
-                  }}
-                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-xs flex items-center gap-2"
-                >
-                  {editingCourse ? 'Update Course' : 'Create Course'}
-                  <CheckCircle2 className="w-4 h-4" />
-                </button>
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setModalOpen(false);
+                  if (onCloseAddModal) onCloseAddModal();
+                }}
+                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-xs flex items-center gap-2 cursor-pointer"
+              >
+                {editingCourse ? 'Update Course' : 'Create Course'}
+                <CheckCircle2 className="w-4 h-4" />
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
+    {/* Course Materials & Reference Documents Modal */}
+    {selectedCourseForDocs && activeCourseForDocs && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto text-left">
+        <div className="relative w-full max-w-xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 text-xs max-h-[85vh] flex flex-col">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-4 shrink-0">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                {activeCourseForDocs.code || activeCourseForDocs.courseCode}
+              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Course Materials & Resources ({activeCourseForDocs.documents?.length || 0})
+              </h3>
+            </div>
+            <button
+              onClick={() => setSelectedCourseForDocs(null)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Quick Actions Header */}
+          <div className="mb-4 shrink-0">
+            <button
+              onClick={() => setIsUploadModalOpen(true)}
+              className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md shadow-purple-600/10"
+            >
+              <PlusCircle className="w-4 h-4" />
+              Upload Reference Document
+            </button>
+          </div>
+
+          {/* Documents List */}
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+            {(!activeCourseForDocs.documents || activeCourseForDocs.documents.length === 0) ? (
+              <div className="p-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-800/25">
+                <FileText className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                <p className="font-bold text-slate-700 dark:text-slate-300">No documents registered yet</p>
+                <p className="text-[11px] text-slate-400 mt-1">Upload syllabi guides, textbooks, or worksheet documents.</p>
               </div>
-            </form>
+            ) : (
+              activeCourseForDocs.documents.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-start justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                >
+                  <div className="flex gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center shrink-0 mt-0.5">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-800 dark:text-slate-200 truncate">{doc.name}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                        {doc.fileSize} • {doc.fileType} • By {doc.uploadedBy}
+                      </p>
+                      {doc.description && (
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 italic bg-white dark:bg-slate-900/40 p-2 rounded-lg border border-slate-100/80 dark:border-slate-800/60 leading-relaxed">
+                          {doc.description}
+                        </p>
+                      )}
+                      <p className="text-[9px] text-slate-400 mt-2">
+                        Uploaded on {new Date(doc.uploadedAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => handleDownloadDocument(doc)}
+                      className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+                      title="Download file"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteDocument(doc)}
+                      className="p-1.5 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 transition-colors"
+                      title="Delete document"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Footer controls */}
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 text-right mt-4 shrink-0">
+            <button
+              onClick={() => setSelectedCourseForDocs(null)}
+              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
+            >
+              Close Catalog View
+            </button>
           </div>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    )}
+
+    {/* Standalone Upload Modal */}
+    {selectedCourseForDocs && (
+      <UploadDocumentModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        preselectedCourseId={selectedCourseForDocs.id}
+        onUploaded={() => {
+          setCourses(storage.getCourses());
+          setRefreshTrigger((prev) => prev + 1);
+        }}
+      />
+    )}
+  </div>
+);
 };

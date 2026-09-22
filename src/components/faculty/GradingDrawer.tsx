@@ -33,29 +33,34 @@ export const GradingDrawer: React.FC<GradingDrawerProps> = ({
   const { user } = useAuth();
   const { showToast } = useNotifications();
 
-  if (!isOpen || !submission || !user) return null;
-
-  const assignment = storage.getAssignments().find((a) => a.id === submission.assignmentId);
-  const maxMarks = assignment?.maxMarks || 20;
-
-  // Grade Form State
-  const [marks, setMarks] = useState<number>(submission.grade?.marksObtained || 0);
-  const [feedback, setFeedback] = useState(submission.grade?.feedback || '');
-  const [privateNotes, setPrivateNotes] = useState(submission.grade?.privateNotes || '');
+  // Grade Form State - unconditional hooks
+  const [marks, setMarks] = useState<number>(0);
+  const [feedback, setFeedback] = useState('');
+  const [privateNotes, setPrivateNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  const assignment = submission
+    ? storage.getAssignments().find((a) => a.id === submission.assignmentId)
+    : undefined;
+  const maxMarks = assignment?.maxMarks || 20;
+
   useEffect(() => {
-    if (submission.grade) {
-      setMarks(submission.grade.marksObtained);
-      setFeedback(submission.grade.feedback);
-      setPrivateNotes(submission.grade.privateNotes || '');
-    } else {
-      setMarks(Math.round(maxMarks * 0.85)); // convenient default for quick testing
-      setFeedback('Good effort on this coursework. Solid implementation and structure.');
-      setPrivateNotes('');
+    if (submission) {
+      if (submission.grade) {
+        setMarks(submission.grade.marksObtained);
+        setFeedback(submission.grade.feedback);
+        setPrivateNotes(submission.grade.privateNotes || '');
+      } else {
+        setMarks(Math.round(maxMarks * 0.85)); // convenient default for quick testing
+        setFeedback('Good effort on this coursework. Solid implementation and structure.');
+        setPrivateNotes('');
+      }
+      setError(null);
     }
   }, [submission, maxMarks]);
+
+  if (!isOpen || !submission || !user) return null;
 
   // Calculations
   const percentage = Math.round((marks / maxMarks) * 100);
@@ -68,11 +73,12 @@ export const GradingDrawer: React.FC<GradingDrawerProps> = ({
   const effectiveMarks = Math.max(0, Number((marks - penaltyDeduction).toFixed(1)));
 
   const handleDownloadStudentFile = () => {
-    if (submission.storedFileName) {
-      const a = document.createElement('a');
-      a.href = `/uploads/assignments/${submission.storedFileName}`;
-      a.download = submission.fileName;
-      a.click();
+    const fileKey = submission.fileKey || submission.storedFileName;
+    if (fileKey && user) {
+      const url = `/api/files/download/${encodeURIComponent(fileKey)}?userId=${encodeURIComponent(
+        user.id
+      )}&userRole=${encodeURIComponent(user.role)}&userEmail=${encodeURIComponent(user.email)}`;
+      window.location.href = url;
       return;
     }
     const blob = new Blob(
@@ -185,13 +191,26 @@ export const GradingDrawer: React.FC<GradingDrawerProps> = ({
                 </span>
                 <span>({submission.fileSize})</span>
               </div>
-              <button
-                onClick={handleDownloadStudentFile}
-                className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 flex items-center gap-1 font-semibold"
-              >
-                <Download className="w-3.5 h-3.5" />
-                Download
-              </button>
+              <div className="flex items-center gap-1.5">
+                {(submission.fileKey || submission.storedFileName) && (
+                  <a
+                    href={`/api/files/preview/${encodeURIComponent(submission.fileKey || submission.storedFileName || '')}?userId=${encodeURIComponent(user?.id || '')}&userRole=${encodeURIComponent(user?.role || '')}&userEmail=${encodeURIComponent(user?.email || '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    title="Open Secure Preview"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-red-500" />
+                  </a>
+                )}
+                <button
+                  onClick={handleDownloadStudentFile}
+                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 flex items-center gap-1 font-semibold"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Download
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-700/60">

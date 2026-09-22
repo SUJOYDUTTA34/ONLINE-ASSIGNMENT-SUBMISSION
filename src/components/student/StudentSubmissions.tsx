@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../services/storage';
 import { Submission, Assignment } from '../../types';
 import { ReceiptModal } from '../common/ReceiptModal';
+import { FileMetadataModal } from '../common/FileMetadataModal';
 import {
   UploadCloud,
   FileText,
@@ -15,7 +16,11 @@ import {
   Search,
   MessageSquare,
   AlertTriangle,
+  Trash2,
+  ShieldCheck,
+  X,
 } from 'lucide-react';
+import { useNotifications } from '../../context/NotificationContext';
 
 interface StudentSubmissionsProps {
   onOpenSubmitModal: (assignment: Assignment) => void;
@@ -29,12 +34,38 @@ export const StudentSubmissions: React.FC<StudentSubmissionsProps> = ({
   const { user } = useAuth();
   if (!user) return null;
 
-  const submissions = storage.getSubmissions().filter((s) => s.studentId === user.id);
+  const [submissions, setSubmissions] = useState<Submission[]>(() =>
+    storage.getSubmissions().filter((s) => s.studentId === user.id)
+  );
   const assignments = storage.getAssignments();
 
+  const { showToast } = useNotifications();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedReceiptSubmission, setSelectedReceiptSubmission] = useState<Submission | null>(null);
   const [selectedFeedbackSubmission, setSelectedFeedbackSubmission] = useState<Submission | null>(null);
+  const [selectedMetadataSubmission, setSelectedMetadataSubmission] = useState<Submission | null>(null);
+  const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
+
+  const confirmDeleteSubmission = () => {
+    if (!submissionToDelete) return;
+    try {
+      storage.deleteSubmission(submissionToDelete.id, user);
+      setSubmissions((prev) => prev.filter((item) => item.id !== submissionToDelete.id));
+      showToast({
+        type: 'success',
+        title: 'Submission Deleted',
+        message: `Your submission for "${submissionToDelete.assignmentTitle}" has been deleted.`,
+      });
+      setSubmissionToDelete(null);
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Error Deleting Submission',
+        message: err.message || 'Failed to delete submission.',
+      });
+      setSubmissionToDelete(null);
+    }
+  };
 
   const filtered = submissions.filter((s) =>
     s.assignmentTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -43,11 +74,12 @@ export const StudentSubmissions: React.FC<StudentSubmissionsProps> = ({
   );
 
   const handleDownloadUploadedFile = (s: Submission) => {
-    if (s.storedFileName) {
-      const a = document.createElement('a');
-      a.href = `/uploads/assignments/${s.storedFileName}`;
-      a.download = s.fileName;
-      a.click();
+    const fileKey = s.fileKey || s.storedFileName;
+    if (fileKey && user) {
+      const url = `/api/files/download/${encodeURIComponent(fileKey)}?userId=${encodeURIComponent(
+        user.id
+      )}&userRole=${encodeURIComponent(user.role)}&userEmail=${encodeURIComponent(user.email)}`;
+      window.location.href = url;
       return;
     }
     // SECURITY FIX: Force application/octet-stream binary download to prevent inline browser execution
@@ -198,7 +230,7 @@ export const StudentSubmissions: React.FC<StudentSubmissionsProps> = ({
                             {s.grade.feedback && (
                               <button
                                 onClick={() => setSelectedFeedbackSubmission(s)}
-                                className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 mt-0.5"
+                                className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 mt-0.5 cursor-pointer"
                               >
                                 <MessageSquare className="w-3 h-3" />
                                 View Faculty Feedback
@@ -217,31 +249,52 @@ export const StudentSubmissions: React.FC<StudentSubmissionsProps> = ({
                           <button
                             id={`view-receipt-btn-${s.id}`}
                             onClick={() => setSelectedReceiptSubmission(s)}
-                            className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1"
+                            className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1 cursor-pointer"
                             title="View Official Receipt"
                           >
                             <Receipt className="w-3.5 h-3.5 text-blue-500" />
                             Receipt
                           </button>
 
-                          {s.storedFileName && (
+                          <button
+                            id={`view-metadata-btn-${s.id}`}
+                            onClick={() => setSelectedMetadataSubmission(s)}
+                            className="px-2 py-1 rounded-lg border border-blue-200 dark:border-blue-900/60 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                            title="Inspect File Security & Upload Metadata"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                            Security
+                          </button>
+
+                          {(s.fileKey || s.storedFileName) && (
                             <a
-                              href={`/uploads/assignments/${s.storedFileName}`}
+                              href={`/api/files/preview/${encodeURIComponent(s.fileKey || s.storedFileName || '')}?userId=${encodeURIComponent(user.id)}&userRole=${encodeURIComponent(user.role)}&userEmail=${encodeURIComponent(user.email)}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center"
-                              title="View PDF Preview"
+                              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center cursor-pointer"
+                              title="Secure Sandboxed Preview"
                             >
                               <FileText className="w-3.5 h-3.5 text-red-500" />
                             </a>
                           )}
 
                           <button
+                            id={`download-submission-btn-${s.id}`}
                             onClick={() => handleDownloadUploadedFile(s)}
-                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"
-                            title="Download Uploaded File"
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-pointer"
+                            title="Download Uploaded File (Authorized)"
                           >
                             <Download className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            id={`delete-submission-btn-${s.id}`}
+                            onClick={() => setSubmissionToDelete(s)}
+                            className="p-1.5 rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50/50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/80 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors cursor-pointer"
+                            title="Delete / Retract Submission"
+                            aria-label="Delete Submission"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
 
                           {assignment && assignment.allowResubmission && (s.version < assignment.maxResubmissions) && (
@@ -250,7 +303,7 @@ export const StudentSubmissions: React.FC<StudentSubmissionsProps> = ({
                                 onOpenSubmitModal(assignment);
                                 document.getElementById('assignmentFile')?.click();
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1 shadow-xs"
+                              className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1 shadow-xs cursor-pointer"
                               title="Resubmit new version"
                             >
                               <RotateCcw className="w-3.5 h-3.5" />
@@ -267,6 +320,69 @@ export const StudentSubmissions: React.FC<StudentSubmissionsProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Delete Submission Confirmation Modal */}
+      {submissionToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-950 text-red-600 flex items-center justify-center font-bold">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                    Delete / Retract Submission
+                  </h3>
+                  <p className="text-[10px] text-slate-400">
+                    Are you sure you want to remove this coursework submission?
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSubmissionToDelete(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700 mb-4 space-y-1.5">
+              <p className="text-slate-700 dark:text-slate-200 font-semibold text-xs">
+                {submissionToDelete.assignmentTitle}
+              </p>
+              <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                <span className="font-medium text-blue-600 dark:text-blue-400">{submissionToDelete.courseCode}</span>
+                <span>•</span>
+                <span className="truncate">{submissionToDelete.fileName}</span>
+                <span>•</span>
+                <span>v{submissionToDelete.version}</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-5">
+              This will retract your uploaded file and remove the record from your submission history. You can resubmit anytime before the deadline.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                onClick={() => setSubmissionToDelete(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                id="confirm-delete-submission-btn"
+                onClick={confirmDeleteSubmission}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Yes, Delete Submission
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Receipt Modal */}
       <ReceiptModal
@@ -295,7 +411,7 @@ export const StudentSubmissions: React.FC<StudentSubmissionsProps> = ({
               </div>
               <button
                 onClick={() => setSelectedFeedbackSubmission(null)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
               >
                 ✕
               </button>
@@ -320,7 +436,7 @@ export const StudentSubmissions: React.FC<StudentSubmissionsProps> = ({
             <div className="text-right">
               <button
                 onClick={() => setSelectedFeedbackSubmission(null)}
-                className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold"
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold cursor-pointer"
               >
                 Close Feedback
               </button>
@@ -328,6 +444,13 @@ export const StudentSubmissions: React.FC<StudentSubmissionsProps> = ({
           </div>
         </div>
       )}
+
+      {/* Security File Metadata Modal */}
+      <FileMetadataModal
+        isOpen={!!selectedMetadataSubmission}
+        onClose={() => setSelectedMetadataSubmission(null)}
+        submission={selectedMetadataSubmission}
+      />
     </div>
   );
 };

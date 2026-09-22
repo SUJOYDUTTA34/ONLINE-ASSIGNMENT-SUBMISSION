@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { PasswordStrength } from '@/components/ui/password-strength';
 import { ShinyButton } from '@/components/ui/shiny-button';
 import { useAuth } from '../../context/AuthContext';
+import { ThemeToggle } from '../common/ThemeToggle';
 import { X, Mail, KeyRound, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 
 interface ForgotPasswordModalProps {
@@ -107,9 +108,12 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                   {step === 3 && 'Choose New Password'}
                 </h3>
               </div>
-              <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer p-1">
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1.5">
+                <ThemeToggle id="forgot-password-theme-toggle" variant="button" className="h-7 w-7 !p-1 rounded-lg" />
+                <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer p-1">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {error && (

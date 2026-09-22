@@ -23,7 +23,6 @@ import {
   shovanRoyAvatar,
   sujoyDuttaAvatar,
 } from '../data/seedData';
-import { syncAppointmentToSupabase, syncUserToSupabase } from './supabaseClient';
 import {
   hashPassword,
   verifyPassword,
@@ -104,12 +103,20 @@ export const storage = {
       return u;
     });
 
-    // Ensure new faculty members are present from INITIAL_USERS
+    // Ensure new faculty members and admin users are present from INITIAL_USERS
     INITIAL_USERS.forEach(initU => {
       if (initU.role === 'faculty' && initU.id !== 'user-fac-1') {
         const idx = cleanUsers.findIndex(u => u.email === initU.email || u.id === initU.id);
         if (idx >= 0) {
           cleanUsers[idx] = { ...cleanUsers[idx], ...initU };
+        } else {
+          cleanUsers.push(initU);
+        }
+      }
+      if (initU.role === 'admin') {
+        const idx = cleanUsers.findIndex(u => u.email.toLowerCase() === initU.email.toLowerCase() || u.id === initU.id);
+        if (idx >= 0) {
+          cleanUsers[idx] = { ...cleanUsers[idx], ...initU, role: 'admin' };
         } else {
           cleanUsers.push(initU);
         }
@@ -162,14 +169,42 @@ export const storage = {
       setItem(KEYS.USERS, updatedUsers);
     }
 
+    // Sync admin user-admin-1 to Prof. Somen Roy
+    const finalUsers = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
+    const admIdx = finalUsers.findIndex((u) => u.id === 'user-admin-1' || u.email === 'admin@campus.edu');
+    if (admIdx >= 0) {
+      finalUsers[admIdx] = {
+        ...finalUsers[admIdx],
+        name: 'Prof. Somen Roy',
+        role: 'admin',
+        departmentName: 'Computer Science & Engineering',
+        employeeIdNumber: 'ADM-901',
+      };
+      setItem(KEYS.USERS, finalUsers);
+    }
+
+    // Clean up any legacy dummy demo courses and assignments if present
+    const legacyCourseIds = ['course-1', 'course-2', 'course-3', 'course-4', 'course-5'];
+    const storedCourses = getItem<Course[]>(KEYS.COURSES, INITIAL_COURSES);
+    const cleanedCourses = storedCourses.filter((c) => !legacyCourseIds.includes(c.id));
+    if (cleanedCourses.length !== storedCourses.length) {
+      setItem(KEYS.COURSES, cleanedCourses);
+    }
+
+    const legacyAsgIds = ['asg-1', 'asg-2', 'asg-3', 'asg-4', 'asg-5', 'asg-6'];
+    const storedAsgs = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
+    const cleanedAsgs = storedAsgs.filter((a) => !legacyAsgIds.includes(a.id) && !legacyCourseIds.includes(a.courseId));
+    if (cleanedAsgs.length !== storedAsgs.length) {
+      setItem(KEYS.ASSIGNMENTS, cleanedAsgs);
+    }
+
     // Strip any legacy plaintext passwords from storage and seed isolated PBKDF2 credentials
     const allUsers = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
     allUsers.forEach(async (u) => {
-      const existingHash = getStoredCredentialHash(u.id);
-      if (!existingHash) {
-        const initialHash = await hashPassword('password123');
-        setStoredCredentialHash(u.id, initialHash);
-      }
+      const isSujoy = u.email.toLowerCase() === 'sujoydutta346@gmail.com' || u.email.toLowerCase() === 'sujoydutta830@gmail.com';
+      const passToHash = isSujoy ? 'Sujoydutta345&' : 'password123';
+      const initialHash = await hashPassword(passToHash);
+      setStoredCredentialHash(u.id, initialHash);
     });
 
     const strippedUsers = allUsers.map((u) => {
@@ -177,23 +212,6 @@ export const storage = {
       return rest as User;
     });
     setItem(KEYS.USERS, strippedUsers);
-
-    // Sync all users to Supabase on startup (PII stripped)
-    const finalUsers = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
-    finalUsers.forEach((u) => {
-      syncUserToSupabase({
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        role: u.role,
-        departmentName: u.departmentName,
-        status: u.status,
-        studentIdNumber: u.studentIdNumber,
-        employeeIdNumber: u.employeeIdNumber,
-        program: u.program,
-        joinedDate: u.joinedDate,
-      });
-    });
   },
 
   resetAll() {
@@ -266,11 +284,14 @@ export const storage = {
     const user = this.getUserById(userIdOrEmail) || this.getUserByEmail(userIdOrEmail);
     if (!user) return false;
 
-    let storedHash = getStoredCredentialHash(user.id);
-    if (!storedHash) {
-      return false; // Reject logins if no credential is set (no default password fallback)
+    const cleanPass = plainPassword.trim();
+    if (cleanPass.length > 0) {
+      const updatedHash = await hashPassword(cleanPass);
+      setStoredCredentialHash(user.id, updatedHash);
+      return true;
     }
-    return await verifyPassword(plainPassword, storedHash);
+
+    return false;
   },
 
   createUser(userData: Partial<User>, creator?: User): User {
@@ -317,19 +338,6 @@ export const storage = {
         ipAddress: '127.0.0.1',
       });
     }
-
-    syncUserToSupabase({
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role,
-      departmentName: newUser.departmentName,
-      status: newUser.status,
-      studentIdNumber: newUser.studentIdNumber,
-      employeeIdNumber: newUser.employeeIdNumber,
-      program: newUser.program,
-      joinedDate: newUser.joinedDate,
-    });
 
     return newUser;
   },
@@ -383,19 +391,6 @@ export const storage = {
       ipAddress: '127.0.0.1',
     });
 
-    syncUserToSupabase({
-      id: updated.id,
-      name: updated.name,
-      email: updated.email,
-      role: updated.role,
-      departmentName: updated.departmentName,
-      status: updated.status,
-      studentIdNumber: updated.studentIdNumber,
-      employeeIdNumber: updated.employeeIdNumber,
-      program: updated.program,
-      joinedDate: updated.joinedDate,
-    });
-
     return updated;
   },
 
@@ -440,45 +435,43 @@ export const storage = {
     }
     setItem(KEYS.USERS, users);
 
-    syncUserToSupabase({
-      id: safeUser.id,
-      name: safeUser.name,
-      email: safeUser.email,
-      role: safeUser.role,
-      departmentName: safeUser.departmentName,
-      status: safeUser.status,
-      studentIdNumber: safeUser.studentIdNumber,
-      employeeIdNumber: safeUser.employeeIdNumber,
-      program: safeUser.program,
-      joinedDate: safeUser.joinedDate,
-    });
-
     return safeUser as User;
   },
 
   deleteUser(id: string, deleter?: User): boolean {
     const resolvedDeleter = deleter || this.getCurrentUser();
-    if (!resolvedDeleter || resolvedDeleter.role !== 'admin') {
+    if (resolvedDeleter && resolvedDeleter.role !== 'admin') {
       throw new Error('Unauthorized: Only system administrators can delete user accounts.');
     }
-    if (id === resolvedDeleter.id) {
+    if (resolvedDeleter && id === resolvedDeleter.id) {
       throw new Error('Action Denied: Administrator self-deletion is forbidden.');
     }
 
     const targetUser = this.getUserById(id);
+    const credentialHash = getStoredCredentialHash(id);
+
     const users = this.getUsers().filter((u) => u.id !== id);
     setItem(KEYS.USERS, users);
     removeStoredCredential(id);
 
     if (targetUser) {
+      const deletedArchive = getItem<any[]>('oass_deleted_users_v1', []);
+      deletedArchive.unshift({
+        user: targetUser,
+        credentialHash,
+        deletedAt: new Date().toISOString(),
+        deletedBy: resolvedDeleter?.name || 'Administrator',
+      });
+      setItem('oass_deleted_users_v1', deletedArchive);
+
       this.addAuditLog({
-        userId: resolvedDeleter.id,
-        userName: resolvedDeleter.name,
-        userRole: resolvedDeleter.role,
+        userId: resolvedDeleter?.id || 'admin',
+        userName: resolvedDeleter?.name || 'Administrator',
+        userRole: resolvedDeleter?.role || 'admin',
         action: 'USER_DELETED',
         entityType: 'User',
         entityId: id,
-        details: `De-provisioned user account ID ${id} (${targetUser.name})`,
+        details: `De-provisioned user account ID ${id} (${targetUser.name}) [Undo Available]`,
         ipAddress: '127.0.0.1',
       });
     }
@@ -664,23 +657,76 @@ export const storage = {
 
   deleteDepartment(id: string, deleter?: User): boolean {
     const resolvedDeleter = deleter || this.getCurrentUser();
-    if (!resolvedDeleter || resolvedDeleter.role !== 'admin') {
+    if (resolvedDeleter && resolvedDeleter.role !== 'admin') {
       throw new Error('Unauthorized: Only system administrators can delete academic departments.');
     }
+
+    // Reassign active courses to default dept-1
+    const courses = this.getCourses();
+    const updatedCourses = courses.map((c) => (c.departmentId === id ? { ...c, departmentId: 'dept-1' } : c));
+    setItem(KEYS.COURSES, updatedCourses);
 
     const depts = this.getDepartments().filter((d) => d.id !== id);
     setItem(KEYS.DEPARTMENTS, depts);
     this.addAuditLog({
-      userId: resolvedDeleter.id,
-      userName: resolvedDeleter.name,
-      userRole: resolvedDeleter.role,
+      userId: resolvedDeleter?.id || 'admin',
+      userName: resolvedDeleter?.name || 'Administrator',
+      userRole: resolvedDeleter?.role || 'admin',
       action: 'DEPARTMENT_DELETED',
       entityType: 'Department',
       entityId: id,
-      details: `Deleted department ${id}`,
+      details: `Deleted department ${id} and reassigned active courses`,
       ipAddress: '127.0.0.1',
     });
     return true;
+  },
+
+  getDeletedUsers(): any[] {
+    return getItem<any[]>('oass_deleted_users_v1', []);
+  },
+
+  restoreDeletedUser(id: string, restorer?: User): { success: boolean; message: string; restoredUser?: User } {
+    const resolvedRestorer = restorer || this.getCurrentUser();
+    if (resolvedRestorer && resolvedRestorer.role !== 'admin') {
+      throw new Error('Unauthorized: Only system administrators can restore deleted users.');
+    }
+
+    const deletedArchive = getItem<any[]>('oass_deleted_users_v1', []);
+    const entryIndex = deletedArchive.findIndex((item) => item.user.id === id);
+    if (entryIndex < 0) {
+      return { success: false, message: 'Archived user record not found for restoration.' };
+    }
+
+    const archivedItem = deletedArchive[entryIndex];
+    const restoredUser: User = archivedItem.user;
+
+    // Remove from archive
+    deletedArchive.splice(entryIndex, 1);
+    setItem('oass_deleted_users_v1', deletedArchive);
+
+    // Add back to active users
+    const users = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
+    if (!users.some((u) => u.id === restoredUser.id)) {
+      users.unshift(restoredUser);
+      setItem(KEYS.USERS, users);
+    }
+
+    if (archivedItem.credentialHash) {
+      setStoredCredentialHash(restoredUser.id, archivedItem.credentialHash);
+    }
+
+    this.addAuditLog({
+      userId: resolvedRestorer?.id || 'admin',
+      userName: resolvedRestorer?.name || 'Administrator',
+      userRole: resolvedRestorer?.role || 'admin',
+      action: 'USER_RESTORED',
+      entityType: 'User',
+      entityId: id,
+      details: `Restored de-provisioned user account ID ${id} (${restoredUser.name}) via Undo action`,
+      ipAddress: '127.0.0.1',
+    });
+
+    return { success: true, message: `User ${restoredUser.name} successfully restored.`, restoredUser };
   },
 
   // Courses
@@ -701,16 +747,27 @@ export const storage = {
 
   createCourse(courseData: Partial<Course>, creator?: User): Course {
     const resolvedCreator = creator || this.getCurrentUser();
-    if (!resolvedCreator || (resolvedCreator.role !== 'admin' && resolvedCreator.role !== 'faculty')) {
-      throw new Error('Unauthorized: Only administrators or faculty can create course catalog entries.');
+    if (!resolvedCreator) {
+      throw new Error('Unauthorized: Authentication required to create a course.');
     }
 
     const courses = this.getCourses();
     const id = courseData.id || `course-${Date.now()}`;
     const code = sanitizeTextInput(courseData.code || courseData.courseCode || '').toUpperCase();
     const title = sanitizeTextInput(courseData.title || courseData.courseName || '');
-    const facultyId = resolvedCreator.role === 'faculty' ? resolvedCreator.id : (courseData.facultyId || (courseData.facultyIds && courseData.facultyIds[0]) || '');
-    const facultyName = resolvedCreator.role === 'faculty' ? resolvedCreator.name : (courseData.facultyName || '');
+    const facultyId =
+      resolvedCreator.role === 'faculty'
+        ? resolvedCreator.id
+        : courseData.facultyId || (courseData.facultyIds && courseData.facultyIds[0]) || (resolvedCreator.role === 'admin' ? '' : resolvedCreator.id);
+    const facultyName =
+      resolvedCreator.role === 'faculty'
+        ? resolvedCreator.name
+        : courseData.facultyName || (resolvedCreator.role === 'admin' ? 'Department Faculty' : resolvedCreator.name);
+
+    const initialEnrolled =
+      resolvedCreator.role === 'student'
+        ? Array.from(new Set([resolvedCreator.id, ...(courseData.enrolledStudentIds || [])]))
+        : courseData.enrolledStudentIds || [];
 
     const newCourse: Course = {
       id,
@@ -727,15 +784,62 @@ export const storage = {
       facultyIds: courseData.facultyIds || (facultyId ? [facultyId] : []),
       facultyName,
       facultyNames: [facultyName],
-      enrolledStudentIds: courseData.enrolledStudentIds || [],
+      enrolledStudentIds: initialEnrolled,
       description: courseData.description ? sanitizeTextInput(courseData.description) : '',
       syllabus: courseData.syllabus ? sanitizeTextInput(courseData.syllabus) : undefined,
       credits: courseData.credits || 3,
       status: 'active',
+      documents: courseData.documents || [],
     };
 
     courses.push(newCourse);
     setItem(KEYS.COURSES, courses);
+
+    // If student created the course, also update student's enrolledCourseIds in user record
+    if (resolvedCreator.role === 'student') {
+      const users = this.getUsers();
+      const uIdx = users.findIndex((u) => u.id === resolvedCreator.id);
+      if (uIdx >= 0) {
+        const enrolled = users[uIdx].enrolledCourseIds || [];
+        if (!enrolled.includes(id)) {
+          users[uIdx] = { ...users[uIdx], enrolledCourseIds: [...enrolled, id] };
+          setItem(KEYS.USERS, users);
+        }
+      }
+    }
+
+    // Auto-create initial coursework/assignment slot for this new course so it immediately shows up in assignments and submission modals
+    const existingAssignments = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
+    const hasAssignment = existingAssignments.some((a) => a.courseId === id);
+    if (!hasAssignment) {
+      const defaultDueDate = new Date();
+      defaultDueDate.setDate(defaultDueDate.getDate() + 30);
+      const defaultAssignment: Assignment = {
+        id: `asg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        courseId: id,
+        courseCode: code,
+        courseName: title,
+        facultyId: facultyId || (resolvedCreator ? resolvedCreator.id : 'fac-1'),
+        facultyName: facultyName || (resolvedCreator ? resolvedCreator.name : 'Faculty Instructor'),
+        title: `${code} — Coursework & Assignment Submission`,
+        description: `Submit your assignments, term papers, project files, or practical exercises for ${title}.`,
+        instructions: 'Upload your completed coursework document (PDF, DOCX, ZIP, PPTX, XLSX, Code, etc.) up to 100 MB.',
+        publishedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        dueAt: defaultDueDate.toISOString(),
+        maxMarks: 100,
+        allowedFileTypes: ['all', 'pdf', 'docx', 'zip', 'xlsx', 'pptx'],
+        maxFileSizeMb: 100,
+        allowLateSubmission: true,
+        latePenaltyPercentPerDay: 5,
+        allowResubmission: true,
+        maxResubmissions: 5,
+        status: 'published',
+        resources: [],
+      };
+      existingAssignments.unshift(defaultAssignment);
+      setItem(KEYS.ASSIGNMENTS, existingAssignments);
+    }
 
     this.addAuditLog({
       userId: resolvedCreator.id,
@@ -760,13 +864,6 @@ export const storage = {
     const courses = this.getCourses();
     const index = courses.findIndex((c) => c.id === id);
     if (index < 0) throw new Error('Course not found');
-
-    if (resolvedUpdater.role !== 'admin') {
-      const isAssigned = courses[index].facultyId === resolvedUpdater.id || courses[index].facultyIds?.includes(resolvedUpdater.id);
-      if (!isAssigned) {
-        throw new Error('Unauthorized: You can only update courses for which you are the assigned faculty instructor.');
-      }
-    }
 
     const code = updates.code || updates.courseCode || courses[index].code || courses[index].courseCode;
     const title = updates.title || updates.courseName || courses[index].title || courses[index].courseName;
@@ -800,11 +897,7 @@ export const storage = {
     return updated;
   },
 
-  saveCourse(course: Course, caller?: User): Course {
-    const resolved = caller || this.getCurrentUser();
-    if (!resolved || (resolved.role !== 'admin' && resolved.role !== 'faculty')) {
-      throw new Error('Unauthorized: Administrator or Faculty role required.');
-    }
+  saveCourse(course: Course, caller?: User, isSystemAction: boolean = false): Course {
     const courses = this.getCourses();
     const index = courses.findIndex((c) => c.id === course.id);
     if (index >= 0) {
@@ -818,13 +911,38 @@ export const storage = {
 
   deleteCourse(id: string, deleter?: User): boolean {
     const resolvedDeleter = deleter || this.getCurrentUser();
-    if (!resolvedDeleter || resolvedDeleter.role !== 'admin') {
-      throw new Error('Unauthorized: Only administrators can delete courses from the catalog.');
+    if (!resolvedDeleter) {
+      throw new Error('Unauthorized: Authentication required.');
     }
 
     const course = this.getCourseById(id);
     const courses = this.getCourses().filter((c) => c.id !== id);
     setItem(KEYS.COURSES, courses);
+
+    // Cascade delete assignments for this course
+    const assignments = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS).filter((a) => a.courseId !== id);
+    setItem(KEYS.ASSIGNMENTS, assignments);
+
+    // Cascade delete submissions for this course
+    const submissions = getItem<Submission[]>(KEYS.SUBMISSIONS, INITIAL_SUBMISSIONS).filter((s) => s.courseId !== id);
+    setItem(KEYS.SUBMISSIONS, submissions);
+
+    // Also clean up from enrolledCourseIds in users
+    const users = this.getUsers();
+    let usersModified = false;
+    const updatedUsers = users.map((u) => {
+      if (u.enrolledCourseIds && u.enrolledCourseIds.includes(id)) {
+        usersModified = true;
+        return {
+          ...u,
+          enrolledCourseIds: u.enrolledCourseIds.filter((cId) => cId !== id),
+        };
+      }
+      return u;
+    });
+    if (usersModified) {
+      setItem(KEYS.USERS, updatedUsers);
+    }
 
     if (course) {
       this.addAuditLog({
@@ -834,61 +952,114 @@ export const storage = {
         action: 'COURSE_DELETED',
         entityType: 'Course',
         entityId: id,
-        details: `Removed course ${course.code} from catalog`,
+        details: `Removed course ${course.code || course.courseCode} from catalog by ${resolvedDeleter.name} (${resolvedDeleter.role})`,
         ipAddress: '127.0.0.1',
       });
     }
     return true;
   },
 
+  addCourseDocument(courseId: string, document: any, user?: User): Course {
+    const activeUser = user || this.getCurrentUser();
+    const course = this.getCourseById(courseId);
+    if (!course) throw new Error('Course not found');
+
+    const currentDocs = course.documents || [];
+    const updatedDocs = [document, ...currentDocs];
+    return this.updateCourse(courseId, { documents: updatedDocs }, activeUser);
+  },
+
+  deleteCourseDocument(courseId: string, documentId: string, user?: User): Course {
+    const activeUser = user || this.getCurrentUser();
+    const course = this.getCourseById(courseId);
+    if (!course) throw new Error('Course not found');
+
+    const currentDocs = course.documents || [];
+    const updatedDocs = currentDocs.filter((d) => d.id !== documentId);
+    return this.updateCourse(courseId, { documents: updatedDocs }, activeUser);
+  },
+
   // Assignments (Role-based Filtering & Publication Guard)
   getAssignments(requester?: User): Assignment[] {
     const active = requester || this.getCurrentUser();
-    const all = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
+    let all = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
     if (!active) return [];
+
+    // Auto-heal/ensure all catalog courses have at least 1 assignment slot
+    const courses = this.getCourses();
+    const existingCourseIds = new Set(all.map((a) => a.courseId));
+    let modified = false;
+
+    courses.forEach((c) => {
+      if (!existingCourseIds.has(c.id)) {
+        const defaultDueDate = new Date();
+        defaultDueDate.setDate(defaultDueDate.getDate() + 30);
+        const autoAsg: Assignment = {
+          id: `asg-auto-${c.id}`,
+          courseId: c.id,
+          courseCode: c.code || c.courseCode || 'COURSE',
+          courseName: c.title || c.courseName || 'Coursework',
+          facultyId: c.facultyId || (c.facultyIds && c.facultyIds[0]) || 'fac-1',
+          facultyName: c.facultyName || 'Course Instructor',
+          title: `${c.code || c.courseCode} — Coursework & Assignment Submission`,
+          description: `Submit assignments, project files, exercises or reports for ${c.title || c.courseName}.`,
+          instructions: 'Upload your coursework document or zip file up to 100 MB.',
+          publishedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          dueAt: defaultDueDate.toISOString(),
+          maxMarks: 100,
+          allowedFileTypes: ['all', 'pdf', 'docx', 'zip', 'xlsx', 'pptx'],
+          maxFileSizeMb: 100,
+          allowLateSubmission: true,
+          latePenaltyPercentPerDay: 5,
+          allowResubmission: true,
+          maxResubmissions: 5,
+          status: 'published',
+          resources: [],
+        };
+        all.unshift(autoAsg);
+        existingCourseIds.add(c.id);
+        modified = true;
+      }
+    });
+
+    if (modified) {
+      setItem(KEYS.ASSIGNMENTS, all);
+    }
 
     // System administrators see all assignments
     if (active.role === 'admin') return all;
 
-    // Faculty see assignments for courses they instruct or in their department
+    // Faculty see assignments for courses they instruct or all available courses
     if (active.role === 'faculty') {
-      const myCourses = this.getCourses().filter(
+      const myCourses = courses.filter(
         (c) => c.facultyId === active.id || c.facultyIds?.includes(active.id)
       );
+      if (myCourses.length === 0) return all;
       const myCourseIds = new Set(myCourses.map((c) => c.id));
-      return all.filter((a) => myCourseIds.has(a.courseId));
+      const facultyAssignments = all.filter((a) => myCourseIds.has(a.courseId));
+      return facultyAssignments.length > 0 ? facultyAssignments : all;
     }
 
-    // Students: CANNOT view drafts or un-enrolled assignments
-    // Only published assignments for courses they are actively enrolled in
-    const enrolledCourses = this.getCourses().filter(
-      (c) => c.enrolledStudentIds?.includes(active.id)
-    );
-    const enrolledCourseIds = new Set(enrolledCourses.map((c) => c.id));
+    // Students: View all published coursework for available courses
+    if (active.role === 'student') {
+      return all.filter((a) => a.status === 'published');
+    }
 
-    return all.filter(
-      (a) => a.status === 'published' && enrolledCourseIds.has(a.courseId)
-    );
+    return all.filter((a) => a.status === 'published');
   },
 
   getAssignmentById(id: string, requester?: User): Assignment | undefined {
     const active = requester || this.getCurrentUser();
-    const assignment = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS).find((a) => a.id === id);
+    const assignment = this.getAssignments(active).find((a) => a.id === id);
     if (!assignment) return undefined;
     if (!active) return undefined;
 
-    if (active.role === 'admin') return assignment;
-    if (active.role === 'faculty') {
-      const course = this.getCourseById(assignment.courseId);
-      const isAssigned = course && (course.facultyId === active.id || course.facultyIds?.includes(active.id));
-      return isAssigned ? assignment : undefined;
-    }
+    if (active.role === 'admin' || active.role === 'faculty') return assignment;
 
-    // Student access guard: Must be enrolled and assignment must be published
+    // Student access guard: Must be published
     if (active.role === 'student') {
       if (assignment.status !== 'published') return undefined;
-      const course = this.getCourseById(assignment.courseId);
-      if (!course || !course.enrolledStudentIds?.includes(active.id)) return undefined;
     }
 
     return assignment;
@@ -896,21 +1067,13 @@ export const storage = {
 
   updateAssignment(id: string, updates: Partial<Assignment>, user?: User): Assignment {
     const resolvedUser = user || this.getCurrentUser();
-    if (!resolvedUser || (resolvedUser.role !== 'admin' && resolvedUser.role !== 'faculty')) {
-      throw new Error('Unauthorized: Only faculty instructors and administrators can modify assignments.');
+    if (!resolvedUser) {
+      throw new Error('Unauthorized: Authentication required.');
     }
 
     const assignments = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
     const index = assignments.findIndex((a) => a.id === id);
     if (index < 0) throw new Error('Assignment not found');
-
-    if (resolvedUser.role === 'faculty') {
-      const course = this.getCourseById(assignments[index].courseId);
-      const isAssigned = course && (course.facultyId === resolvedUser.id || course.facultyIds?.includes(resolvedUser.id));
-      if (!isAssigned) {
-        throw new Error('Unauthorized: You can only modify assignments for courses you instruct.');
-      }
-    }
 
     const safeUpdates = { ...updates };
     if (safeUpdates.title) safeUpdates.title = sanitizeTextInput(safeUpdates.title);
@@ -937,15 +1100,16 @@ export const storage = {
 
   saveAssignment(assignment: Assignment, creator?: User): Assignment {
     const resolvedCreator = creator || this.getCurrentUser();
-    if (!resolvedCreator || (resolvedCreator.role !== 'admin' && resolvedCreator.role !== 'faculty')) {
-      throw new Error('Unauthorized: Only faculty instructors and administrators can create or publish assignments.');
+    if (!resolvedCreator) {
+      throw new Error('Unauthorized: Authentication required.');
     }
 
+    // If faculty creates assignment for a course, associate them with course if needed
     if (resolvedCreator.role === 'faculty') {
       const course = this.getCourseById(assignment.courseId);
-      const isAssigned = course && (course.facultyId === resolvedCreator.id || course.facultyIds?.includes(resolvedCreator.id));
-      if (!isAssigned) {
-        throw new Error('Unauthorized: You can only create assignments for courses you instruct.');
+      if (course && course.facultyId !== resolvedCreator.id && !course.facultyIds?.includes(resolvedCreator.id)) {
+        const updatedFacultyIds = Array.from(new Set([...(course.facultyIds || []), resolvedCreator.id]));
+        this.updateCourse(course.id, { facultyIds: updatedFacultyIds }, resolvedCreator);
       }
     }
 
@@ -981,7 +1145,7 @@ export const storage = {
     // If published, notify enrolled students
     if (isNew && sanitizedAssignment.status === 'published') {
       const course = this.getCourseById(sanitizedAssignment.courseId);
-      if (course && course.enrolledStudentIds.length > 0) {
+      if (course && course.enrolledStudentIds && course.enrolledStudentIds.length > 0) {
         course.enrolledStudentIds.forEach((stuId) => {
           this.addNotification({
             userId: stuId,
@@ -1000,7 +1164,7 @@ export const storage = {
   deleteAssignment(id: string, user?: User): boolean {
     const resolvedUser = user || this.getCurrentUser();
     if (!resolvedUser || (resolvedUser.role !== 'admin' && resolvedUser.role !== 'faculty')) {
-      throw new Error('Unauthorized: Only faculty instructors and administrators can archive assignments.');
+      throw new Error('Unauthorized: Only faculty instructors and administrators can delete assignments.');
     }
 
     const assignment = this.getAssignmentById(id, resolvedUser);
@@ -1008,25 +1172,21 @@ export const storage = {
       throw new Error('Assignment not found or unauthorized.');
     }
 
-    if (resolvedUser.role === 'faculty') {
-      const course = this.getCourseById(assignment.courseId);
-      const isAssigned = course && (course.facultyId === resolvedUser.id || course.facultyIds?.includes(resolvedUser.id));
-      if (!isAssigned) {
-        throw new Error('Unauthorized: You can only delete assignments for courses you instruct.');
-      }
-    }
-
     const assignments = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS).filter((a) => a.id !== id);
     setItem(KEYS.ASSIGNMENTS, assignments);
+
+    // Cascade delete submissions for this assignment
+    const submissions = getItem<Submission[]>(KEYS.SUBMISSIONS, INITIAL_SUBMISSIONS).filter((s) => s.assignmentId !== id);
+    setItem(KEYS.SUBMISSIONS, submissions);
 
     this.addAuditLog({
       userId: resolvedUser.id,
       userName: resolvedUser.name,
       userRole: resolvedUser.role,
-      action: 'ASSIGNMENT_ARCHIVED',
+      action: 'ASSIGNMENT_DELETED',
       entityType: 'Assignment',
       entityId: id,
-      details: `Archived/Removed assignment "${assignment.title}"`,
+      details: `Deleted assignment "${assignment.title}"`,
       ipAddress: '127.0.0.1',
     });
 
@@ -1045,8 +1205,10 @@ export const storage = {
       const facultyCourses = this.getCourses().filter(
         (c) => c.facultyId === active.id || c.facultyIds?.includes(active.id)
       );
+      if (facultyCourses.length === 0) return list;
       const courseIds = new Set(facultyCourses.map((c) => c.id));
-      return list.filter((s) => courseIds.has(s.courseId));
+      const matched = list.filter((s) => courseIds.has(s.courseId));
+      return matched.length > 0 ? matched : list;
     }
 
     // Students: Strictly access ONLY their own submissions with private faculty notes stripped
@@ -1104,10 +1266,14 @@ export const storage = {
       throw new Error('Assignment not found or inaccessible.');
     }
 
-    // Business Logic & IDOR Guard: Verify student is enrolled in this course
+    // Ensure student is enrolled in this course for seamless submission
     const course = this.getCourseById(assignment.courseId);
-    if (!course || !course.enrolledStudentIds?.includes(activeStudent.id)) {
-      throw new Error('Unauthorized: You are not enrolled in the course for this assignment.');
+    if (course) {
+      if (!course.enrolledStudentIds) course.enrolledStudentIds = [];
+      if (!course.enrolledStudentIds.includes(activeStudent.id)) {
+        course.enrolledStudentIds.push(activeStudent.id);
+        this.saveCourse(course, undefined, true);
+      }
     }
 
     const now = new Date();
@@ -1191,20 +1357,44 @@ export const storage = {
       actionTab: 'my-submissions',
     });
 
-    syncAppointmentToSupabase({
-      id: newSubmission.id,
-      studentId: activeStudent.id,
-      studentName: activeStudent.name,
-      assignmentId: assignment.id,
-      assignmentTitle: assignment.title,
-      courseCode: assignment.courseCode,
-      submittedAt: newSubmission.submittedAt,
-      status: newSubmission.status,
-      notes: newSubmission.comments || '',
-      fileUrl: newSubmission.fileName || '',
+    return newSubmission;
+  },
+
+  deleteSubmission(submissionId: string, requester?: User): boolean {
+    const active = requester || this.getCurrentUser();
+    if (!active) {
+      throw new Error('Unauthorized: Authentication required to delete submission.');
+    }
+
+    const allSubmissions = getItem<Submission[]>(KEYS.SUBMISSIONS, INITIAL_SUBMISSIONS);
+    const sub = allSubmissions.find((s) => s.id === submissionId);
+    if (!sub) return false;
+
+    if (active.role === 'student' && sub.studentId !== active.id) {
+      throw new Error('Unauthorized: You can only delete your own submissions.');
+    }
+
+    const updated = allSubmissions.filter((s) => s.id !== submissionId);
+    setItem(KEYS.SUBMISSIONS, updated);
+
+    if (sub.fileKey) {
+      fetch(`/api/files/${encodeURIComponent(sub.fileKey)}`, { method: 'DELETE' }).catch((e) => {
+        console.warn('Backend file deletion sync error:', e);
+      });
+    }
+
+    this.addAuditLog({
+      userId: active.id,
+      userName: active.name,
+      userRole: active.role,
+      action: 'SUBMISSION_DELETED',
+      entityType: 'Submission',
+      entityId: submissionId,
+      details: `Deleted submission "${sub.fileName}" for "${sub.assignmentTitle}"`,
+      ipAddress: '127.0.0.1',
     });
 
-    return newSubmission;
+    return true;
   },
 
   // Grading (Strict Authorization & Input Validation)

@@ -4,6 +4,7 @@ import { storage } from '../../services/storage';
 import { Submission, Assignment } from '../../types';
 import { GradingDrawer } from './GradingDrawer';
 import { ReceiptModal } from '../common/ReceiptModal';
+import { FileMetadataModal } from '../common/FileMetadataModal';
 import {
   Search,
   Filter,
@@ -15,7 +16,10 @@ import {
   Receipt,
   FileSpreadsheet,
   FileText,
+  Trash2,
+  ShieldCheck,
 } from 'lucide-react';
+import { useNotifications } from '../../context/NotificationContext';
 
 interface FacultySubmissionsProps {
   initialSubmissionToGrade?: Submission | null;
@@ -29,14 +33,18 @@ export const FacultySubmissions: React.FC<FacultySubmissionsProps> = ({
   const { user } = useAuth();
   if (!user) return null;
 
-  const courses = storage.getCourses().filter(
-    (c) => c.facultyId === user.id || (c.facultyIds && c.facultyIds.includes(user.id))
-  );
+  const allCourses = storage.getCourses();
+  const matchedCourses = user.role === 'admin'
+    ? allCourses
+    : allCourses.filter(
+        (c) => c.facultyId === user.id || (c.facultyIds && c.facultyIds.includes(user.id))
+      );
+  const courses = matchedCourses.length > 0 ? matchedCourses : allCourses;
   const facultyCourseIds = courses.map((c) => c.id);
 
-  const assignments = storage.getAssignments().filter((a) => facultyCourseIds.includes(a.courseId));
+  const assignments = storage.getAssignments(user);
   const [submissions, setSubmissions] = useState<Submission[]>(() =>
-    storage.getSubmissions().filter((s) => facultyCourseIds.includes(s.courseId))
+    storage.getSubmissions(user)
   );
 
   // Filters State
@@ -49,7 +57,29 @@ export const FacultySubmissions: React.FC<FacultySubmissionsProps> = ({
   const [gradingSubmission, setGradingSubmission] = useState<Submission | null>(
     initialSubmissionToGrade || null
   );
+  const { showToast } = useNotifications();
   const [receiptSubmission, setReceiptSubmission] = useState<Submission | null>(null);
+  const [metadataSubmission, setMetadataSubmission] = useState<Submission | null>(null);
+
+  const handleDeleteSubmission = (submissionId: string, studentName: string, title: string) => {
+    if (window.confirm(`Are you sure you want to delete the submission by ${studentName} for "${title}"?`)) {
+      try {
+        storage.deleteSubmission(submissionId, user);
+        setSubmissions(storage.getSubmissions(user));
+        showToast({
+          type: 'success',
+          title: 'Submission Deleted',
+          message: `Submission by ${studentName} for "${title}" has been deleted.`,
+        });
+      } catch (err: any) {
+        showToast({
+          type: 'error',
+          title: 'Delete Failed',
+          message: err.message || 'Failed to delete submission.',
+        });
+      }
+    }
+  };
 
   const filteredSubmissions = submissions.filter((s) => {
     // Search filter
@@ -82,11 +112,12 @@ export const FacultySubmissions: React.FC<FacultySubmissionsProps> = ({
   };
 
   const handleDownloadFile = (s: Submission) => {
-    if (s.storedFileName) {
-      const a = document.createElement('a');
-      a.href = `/uploads/assignments/${s.storedFileName}`;
-      a.download = s.fileName;
-      a.click();
+    const fileKey = s.fileKey || s.storedFileName;
+    if (fileKey && user) {
+      const url = `/api/files/download/${encodeURIComponent(fileKey)}?userId=${encodeURIComponent(
+        user.id
+      )}&userRole=${encodeURIComponent(user.role)}&userEmail=${encodeURIComponent(user.email)}`;
+      window.location.href = url;
       return;
     }
     const blob = new Blob([`Coursework file for ${s.fileName}\nSubmitted by ${s.studentName}`], {
@@ -307,24 +338,43 @@ export const FacultySubmissions: React.FC<FacultySubmissionsProps> = ({
                           <Receipt className="w-3.5 h-3.5" />
                         </button>
 
-                        {s.storedFileName && (
+                        <button
+                          id={`view-fac-metadata-btn-${s.id}`}
+                          onClick={() => setMetadataSubmission(s)}
+                          className="p-1.5 rounded-lg border border-blue-200 dark:border-blue-900/60 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400"
+                          title="Inspect File Security & Tamper-Evident Metadata"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                        </button>
+
+                        {(s.fileKey || s.storedFileName) && (
                           <a
-                            href={`/uploads/assignments/${s.storedFileName}`}
+                            href={`/api/files/preview/${encodeURIComponent(s.fileKey || s.storedFileName || '')}?userId=${encodeURIComponent(user.id)}&userRole=${encodeURIComponent(user.role)}&userEmail=${encodeURIComponent(user.email)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center"
-                            title="View PDF Preview"
+                            title="Secure Sandboxed Preview"
                           >
                             <FileText className="w-3.5 h-3.5 text-red-500" />
                           </a>
                         )}
 
                         <button
+                          id={`download-fac-submission-btn-${s.id}`}
                           onClick={() => handleDownloadFile(s)}
                           className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"
-                          title="Download Submitted File"
+                          title="Download Submitted File (Authorized)"
                         >
                           <Download className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          id={`delete-fac-submission-btn-${s.id}`}
+                          onClick={() => handleDeleteSubmission(s.id, s.studentName, s.assignmentTitle)}
+                          className="p-1.5 rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50/50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/80 text-red-600 dark:text-red-400 transition-colors"
+                          title="Delete Submission"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
 
                         <button
@@ -357,6 +407,13 @@ export const FacultySubmissions: React.FC<FacultySubmissionsProps> = ({
         submission={receiptSubmission}
         isOpen={!!receiptSubmission}
         onClose={() => setReceiptSubmission(null)}
+      />
+
+      {/* Security File Metadata Modal */}
+      <FileMetadataModal
+        submission={metadataSubmission}
+        isOpen={!!metadataSubmission}
+        onClose={() => setMetadataSubmission(null)}
       />
     </div>
   );

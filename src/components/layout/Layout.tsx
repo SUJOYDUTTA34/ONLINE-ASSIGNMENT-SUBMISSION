@@ -51,6 +51,7 @@ export const Layout: React.FC<LayoutProps> = ({ onLogoutToLanding }) => {
   const [submitModalAssignment, setSubmitModalAssignment] = useState<Assignment | null>(null);
   const [detailsModalAssignment, setDetailsModalAssignment] = useState<Assignment | null>(null);
   const [selectAssignmentModalOpen, setSelectAssignmentModalOpen] = useState(false);
+  const [assignmentCourseFilter, setAssignmentCourseFilter] = useState<string>('ALL');
 
   // Faculty Modals & State
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
@@ -94,14 +95,17 @@ export const Layout: React.FC<LayoutProps> = ({ onLogoutToLanding }) => {
               onOpenQuickSubmit={() => setSelectAssignmentModalOpen(true)}
               onViewSubmissionsTab={() => setActiveTab('submissions')}
               onViewGradesTab={() => setActiveTab('grades')}
+              onViewCoursesTab={() => setActiveTab('my-courses')}
             />
           );
         case 'my-courses':
           return (
             <StudentCourses
               onNavigateToAssignments={(courseId) => {
+                setAssignmentCourseFilter(courseId || 'ALL');
                 setActiveTab('assignments');
               }}
+              onOpenSubmitModal={(asg: Assignment) => setSubmitModalAssignment(asg)}
             />
           );
         case 'assignments':
@@ -110,6 +114,7 @@ export const Layout: React.FC<LayoutProps> = ({ onLogoutToLanding }) => {
               onSelectAssignment={(asg: Assignment) => setDetailsModalAssignment(asg)}
               onOpenSubmitModal={(asg: Assignment) => setSubmitModalAssignment(asg)}
               onOpenQuickSubmit={() => setSelectAssignmentModalOpen(true)}
+              initialCourseId={assignmentCourseFilter}
             />
           );
         case 'my-submissions':
@@ -136,6 +141,7 @@ export const Layout: React.FC<LayoutProps> = ({ onLogoutToLanding }) => {
               onOpenQuickSubmit={() => setSelectAssignmentModalOpen(true)}
               onViewSubmissionsTab={() => setActiveTab('submissions')}
               onViewGradesTab={() => setActiveTab('grades')}
+              onViewCoursesTab={() => setActiveTab('my-courses')}
             />
           );
       }

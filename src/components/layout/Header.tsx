@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { storage } from '../../services/storage';
-import { syncUserToSupabase, syncAppointmentToSupabase } from '../../services/supabaseClient';
 import academicLogo from '../../assets/images/academic_crest_logo_1789753031183.jpg';
 import {
   GraduationCap,
@@ -16,29 +15,29 @@ import {
   Menu,
   Shield,
   BookOpen,
-  Sparkles,
-  Cloud,
+  Activity,
+  CheckCircle2,
 } from 'lucide-react';
 import { UserRole } from '../../types';
 import { UserAvatar } from '../common/UserAvatar';
+import { ThemeToggle } from '../common/ThemeToggle';
 
 interface HeaderProps {
   onToggleMobileSidebar: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  onOpenQuickSubmit?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, setActiveTab }) => {
-  const { user, logout, switchDemoUser } = useAuth();
+  const { user, logout } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
-  const roleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -48,9 +47,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, setActive
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setProfileOpen(false);
       }
-      if (roleRef.current && !roleRef.current.contains(event.target as Node)) {
-        setRoleSwitcherOpen(false);
-      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -58,13 +54,29 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, setActive
 
   if (!user) return null;
 
-  const roleLabels: Record<UserRole, { label: string; badge: string; icon: any }> = {
-    admin: { label: 'Administrator', badge: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950/70 dark:text-purple-300 dark:border-purple-800', icon: Shield },
-    faculty: { label: 'Faculty / Teacher', badge: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/70 dark:text-blue-300 dark:border-blue-800', icon: BookOpen },
-    student: { label: 'Student', badge: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800', icon: GraduationCap },
+  const roleLabels: Record<UserRole, { label: string; badge: string; icon: any; portalName: string }> = {
+    admin: {
+      label: 'Administrator',
+      badge: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950/70 dark:text-purple-300 dark:border-purple-800',
+      icon: Shield,
+      portalName: 'Admin Portal',
+    },
+    faculty: {
+      label: 'Faculty / Teacher',
+      badge: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/70 dark:text-blue-300 dark:border-blue-800',
+      icon: BookOpen,
+      portalName: 'Teacher Portal',
+    },
+    student: {
+      label: 'Student',
+      badge: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800',
+      icon: GraduationCap,
+      portalName: 'Student Portal',
+    },
   };
 
   const currentRoleConfig = roleLabels[user.role];
+  const isOnline = user.status === 'active';
 
   return (
     <header id="app-header" className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 h-16 transition-colors">
@@ -93,7 +105,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, setActive
               <h1 className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-none flex items-center gap-1.5 font-serif">
                 Scholaris
                 <span className="text-[9px] font-sans font-semibold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
-                  Academic
+                  {currentRoleConfig.portalName}
                 </span>
               </h1>
               <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
@@ -105,102 +117,38 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, setActive
 
         {/* Center/Right Controls */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Quick Persona / Role Switcher */}
-          <div className="relative" ref={roleRef}>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              id="role-switcher-btn"
-              onClick={() => setRoleSwitcherOpen(!roleSwitcherOpen)}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold shadow-xs transition-all hover:opacity-90 cursor-pointer ${currentRoleConfig.badge}`}
-              title="Click to switch demo user role"
+          {/* Authenticated Role Badge & Active Status Indicator */}
+          <div className="flex items-center gap-2">
+            <div
+              id="header-authenticated-role-badge"
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold shadow-xs ${currentRoleConfig.badge}`}
             >
               <currentRoleConfig.icon className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">{currentRoleConfig.label}</span>
-              <Sparkles className="w-3 h-3 text-amber-500 hidden sm:inline" />
-              <ChevronDown className={`w-3 h-3 opacity-60 transition-transform ${roleSwitcherOpen ? 'rotate-180' : ''}`} />
-            </motion.button>
+              <span className="hidden sm:inline">{currentRoleConfig.label}</span>
+            </div>
 
-            <AnimatePresence>
-              {roleSwitcherOpen && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                  transition={{ duration: 0.15, ease: 'easeOut' }}
-                  id="role-switcher-dropdown"
-                  className="absolute right-0 mt-2 w-64 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl py-2 z-50 origin-top-right"
-                >
-                  <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-400">
-                      Switch Active Persona (Demo)
-                    </p>
-                  </div>
-                  <button
-                    id="switch-student-btn"
-                    onClick={() => {
-                      switchDemoUser('student');
-                      setRoleSwitcherOpen(false);
-                      setActiveTab('dashboard');
-                    }}
-                    className={`w-full text-left px-3 py-2 flex items-center justify-between text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer ${
-                      user.role === 'student' ? 'font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20' : 'text-slate-700 dark:text-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <GraduationCap className="w-4 h-4 text-emerald-500" />
-                      <div>
-                        <p className="font-medium">Sujoy Dutta</p>
-                        <p className="text-[10px] text-slate-400">Student (2024-1388)</p>
-                      </div>
-                    </div>
-                    {user.role === 'student' && <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded">Active</span>}
-                  </button>
-
-                  <button
-                    id="switch-faculty-btn"
-                    onClick={() => {
-                      switchDemoUser('faculty');
-                      setRoleSwitcherOpen(false);
-                      setActiveTab('dashboard');
-                    }}
-                    className={`w-full text-left px-3 py-2 flex items-center justify-between text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer ${
-                      user.role === 'faculty' ? 'font-semibold text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20' : 'text-slate-700 dark:text-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-blue-500" />
-                      <div>
-                        <p className="font-medium">Prof. Shovan Roy</p>
-                        <p className="text-[10px] text-slate-400">Asst. Prof & HOD (Computer Science)</p>
-                      </div>
-                    </div>
-                    {user.role === 'faculty' && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">Active</span>}
-                  </button>
-
-                  <button
-                    id="switch-admin-btn"
-                    onClick={() => {
-                      switchDemoUser('admin');
-                      setRoleSwitcherOpen(false);
-                      setActiveTab('dashboard');
-                    }}
-                    className={`w-full text-left px-3 py-2 flex items-center justify-between text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer ${
-                      user.role === 'admin' ? 'font-semibold text-purple-600 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-950/20' : 'text-slate-700 dark:text-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-purple-500" />
-                      <div>
-                        <p className="font-medium">Dr. Eleanor Vance</p>
-                        <p className="text-[10px] text-slate-400">Administrator (ADM-901)</p>
-                      </div>
-                    </div>
-                    {user.role === 'admin' && <span className="text-[10px] bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded">Active</span>}
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Active / Online Live Indicator */}
+            <div
+              id="header-user-active-status"
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium shadow-xs ${
+                isOnline
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                  : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+              }`}
+              title={isOnline ? 'Account is currently Active & Online' : 'Account is Non-Active'}
+            >
+              <span className="relative flex h-2 w-2">
+                {isOnline && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                )}
+                <span
+                  className={`relative inline-flex rounded-full h-2 w-2 ${
+                    isOnline ? 'bg-emerald-500' : 'bg-slate-400'
+                  }`}
+                ></span>
+              </span>
+              <span className="font-semibold">{isOnline ? 'Active' : 'Non-Active'}</span>
+            </div>
           </div>
 
           {/* Notifications Bell */}
@@ -313,6 +261,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, setActive
             </AnimatePresence>
           </div>
 
+          {/* Quick Light/Dark Mode Switcher */}
+          <ThemeToggle
+            id="header-theme-toggle-btn"
+            variant="button"
+            className="h-9 w-9 !p-2 rounded-xl"
+          />
+
           {/* User Profile Dropdown */}
           <div className="relative" ref={profileRef}>
             <motion.button
@@ -381,51 +336,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, setActive
                     Settings & Preferences
                   </button>
 
-                  <button
-                    id="profile-menu-sync-supabase-btn"
-                    onClick={async () => {
-                      setProfileOpen(false);
-                      const users = storage.getUsers();
-                      const submissions = storage.getSubmissions();
-                      let count = 0;
-                      for (const u of users) {
-                        await syncUserToSupabase({
-                          id: u.id,
-                          name: u.name,
-                          email: u.email,
-                          role: u.role,
-                          departmentName: u.departmentName,
-                          status: u.status,
-                          studentIdNumber: u.studentIdNumber,
-                          employeeIdNumber: u.employeeIdNumber,
-                          program: u.program,
-                          joinedDate: u.joinedDate,
-                        });
-                        count++;
-                      }
-                      for (const s of submissions) {
-                        await syncAppointmentToSupabase({
-                          id: s.id,
-                          studentId: s.studentId,
-                          studentName: s.studentName,
-                          assignmentId: s.assignmentId,
-                          assignmentTitle: s.assignmentTitle,
-                          courseCode: s.courseCode,
-                          submittedAt: s.submittedAt,
-                          status: s.status,
-                          notes: s.comments || '',
-                          fileUrl: s.fileName || '',
-                        });
-                      }
-                      alert(`Successfully synced ${users.length} users and ${submissions.length} submissions to Supabase! Check your Supabase Table Editor.`);
-                    }}
-                    className="w-full text-left px-3.5 py-2 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 flex items-center gap-2 font-medium cursor-pointer"
-                  >
-                    <Cloud className="w-4 h-4 text-blue-500" />
-                    Sync Data to Supabase Now
-                  </button>
 
-                  <div className="border-t border-slate-100 dark:border-slate-700/60 my-1" />
 
                   <button
                     id="profile-menu-logout-btn"

@@ -106,25 +106,26 @@ export const DepartmentManagement: React.FC = () => {
     }
   };
 
-  const handleDelete = (id: string, name: string) => {
-    const hasCourses = courses.some((c) => c.departmentId === id);
-    if (hasCourses) {
-      showToast({
-        type: 'error',
-        title: 'Action Denied',
-        message: 'Cannot delete a department with active assigned courses.',
-      });
-      return;
-    }
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
-    if (window.confirm(`Are you sure you want to remove the ${name} department?`)) {
-      storage.deleteDepartment(id, currentUser || undefined);
-      setDepartments(departments.filter((d) => d.id !== id));
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    try {
+      storage.deleteDepartment(deleteTarget.id, currentUser || undefined);
+      setDepartments(storage.getDepartments());
       showToast({
         type: 'success',
         title: 'Department Removed',
-        message: `${name} has been deleted.`,
+        message: `${deleteTarget.name} has been deleted and active courses reassigned.`,
       });
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Deletion Failed',
+        message: err.message || 'Could not delete department.',
+      });
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -198,8 +199,9 @@ export const DepartmentManagement: React.FC = () => {
                       <Edit className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => handleDelete(d.id, d.name)}
-                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600"
+                      onClick={() => setDeleteTarget({ id: d.id, name: d.name })}
+                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600 cursor-pointer"
+                      title="Delete Department"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -377,6 +379,44 @@ export const DepartmentManagement: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 text-xs space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Confirm Department Deletion
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Are you sure you want to remove <strong className="text-slate-900 dark:text-white">{deleteTarget.name}</strong>? Associated courses will be safely reassigned.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold shadow-xs cursor-pointer"
+              >
+                Yes, Delete Department
+              </button>
+            </div>
           </div>
         </div>
       )}

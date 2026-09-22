@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @keyframes shimmer {
   0% {
     transform: translateX(-100%);
@@ -27,4 +29,14 @@
 
 .animate-indeterminate {
   animation: indeterminate 1.8s infinite ease-in-out;
+}
+
+/* Compact Table Mode */
+[data-compact="true"] table td,
+[data-compact="true"] table th {
+  padding-top: 0.35rem !important;
+  padding-bottom: 0.35rem !important;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+  font-size: 11px !important;
 }

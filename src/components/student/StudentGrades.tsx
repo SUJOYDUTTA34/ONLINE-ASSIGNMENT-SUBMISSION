@@ -26,9 +26,41 @@ export const StudentGrades: React.FC = () => {
   const { user } = useAuth();
   if (!user) return null;
 
-  const courses = storage.getCourses().filter((c) => c.enrolledStudentIds.includes(user.id));
+  const courses = storage.getCourses().filter(
+    (c) =>
+      c.enrolledStudentIds?.includes(user.id) ||
+      (user.enrolledCourseIds && user.enrolledCourseIds.includes(c.id))
+  );
   const submissions = storage.getSubmissions().filter((s) => s.studentId === user.id);
   const graded = submissions.filter((s) => s.status === 'graded' && s.grade);
+
+  if (courses.length === 0) {
+    return (
+      <div id="student-grades-view" className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5 font-serif">
+              <Award className="w-7 h-7 text-blue-600 dark:text-blue-400" />
+              Academic Performance & Grades
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
+              Grade point averages, score breakdown and official transcript export
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-900 flex items-center justify-center mx-auto text-amber-600 mb-4 shadow-xs">
+            <Award className="w-7 h-7" />
+          </div>
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">No Enrolled Courses or Grades Found</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-2 leading-relaxed">
+            You do not have any courses enrolled yet. Please add your subjects from the &quot;My Courses&quot; page. Once courses are added and submitted coursework is evaluated by faculty, your GPA and marks breakdown will automatically show up here.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Overall calculations
   const totalGraded = graded.length;

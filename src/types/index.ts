@@ -62,8 +62,23 @@ export interface Course {
   enrolledStudentIds: string[];
   description: string;
   syllabus?: string;
+  documentUrl?: string;
+  documentName?: string;
   credits: number;
   status: 'active' | 'archived';
+  documents?: {
+    id: string;
+    name: string;
+    fileName: string;
+    fileSize: string;
+    fileType: string;
+    category: 'syllabus' | 'lecture' | 'guide' | 'manual' | 'reference';
+    description?: string;
+    dataUrl: string;
+    uploadedBy: string;
+    uploadedById: string;
+    uploadedAt: string;
+  }[];
 }
 
 export interface AssignmentResource {
@@ -98,6 +113,43 @@ export interface Assignment {
   createdAt: string;
 }
 
+export interface FileMetadataUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  studentIdNumber?: string;
+}
+
+export interface FileMetadataAssignment {
+  id: string;
+  title?: string;
+  courseId?: string;
+  courseCode?: string;
+  courseName?: string;
+}
+
+export interface FileMetadataSubmission {
+  id: string;
+  receiptId?: string;
+  version?: number;
+}
+
+export interface FileUploadMetadata {
+  id: string;
+  fileKey: string;
+  originalFilename: string;
+  fileSize: number;
+  fileSizeFormatted: string;
+  mimeType: string;
+  extension: string;
+  sha256Hash: string;
+  uploadTime: string;
+  user: FileMetadataUser;
+  assignment: FileMetadataAssignment;
+  submission: FileMetadataSubmission;
+}
+
 export interface Submission {
   id: string;
   assignmentId: string;
@@ -109,10 +161,12 @@ export interface Submission {
   studentName: string;
   studentIdNumber: string;
   fileName: string;
+  fileKey?: string;
   storedFileName?: string;
   fileSize: string;
   fileType: string;
   fileData?: string;
+  fileMetadata?: FileUploadMetadata;
   comments?: string;
   submittedAt: string;
   isLate: boolean;
