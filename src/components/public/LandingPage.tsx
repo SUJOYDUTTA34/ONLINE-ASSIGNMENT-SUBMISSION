@@ -340,26 +340,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
                 <div className="p-6 bg-slate-50/50 dark:bg-slate-900/50 min-h-[240px]">
                   {liveTab === 'courses' && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {assignmentsList.slice(0, 3).map((assignment) => (
+                      {coursesList.map((course) => (
                         <div
-                          key={assignment.id}
-                          className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs"
+                          key={course.id}
+                          className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs flex flex-col justify-between"
                         >
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{assignment.courseCode}</span>
-                            <span className="text-[10px] bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">Max: {assignment.maxMarks} Marks</span>
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 font-mono">{course.courseCode || course.code}</span>
+                              <span className="text-[10px] bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">{course.credits} Credits</span>
+                            </div>
+                            <h4 className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">{course.courseName}</h4>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{course.departmentName || 'Academic Department'}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 line-clamp-2">{course.description}</p>
                           </div>
-                          <h4 className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">{assignment.title}</h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{assignment.facultyName}</p>
                           <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs">
-                            <span className="text-slate-400 font-mono">Due: {assignment.dueAt?.split('T')[0] || 'Ongoing'}</span>
-                            <span className="font-semibold text-blue-600">Active Coursework</span>
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">Instructor: {course.facultyName || 'TBA'}</span>
+                            <span className="font-semibold text-blue-600 dark:text-blue-400">Sem {course.semester}</span>
                           </div>
                         </div>
                       ))}
-                      {assignmentsList.length === 0 && (
+                      {coursesList.length === 0 && (
                         <div className="col-span-3 text-center py-10 text-slate-500 text-sm">
-                          No courses or assignments posted yet. Sign in as faculty to add courses and post assignments!
+                          No courses added yet. Sign in as administrator or faculty to add courses!
                         </div>
                       )}
                     </div>
