@@ -27,6 +27,7 @@ import {
   ChevronRight,
   LogIn,
   UserPlus,
+  Share2,
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -160,7 +161,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
           </div>
 
           {/* Action Buttons - Fully Responsive on Mobile, Tablet, Laptop, PC with Dark/Light Toggle */}
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             <ThemeToggle
               id="landing-navbar-theme-toggle"
               variant="button"
@@ -795,7 +796,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-4 text-[11px]">
           <p>© 2026 Online Assignment Submission System. All rights reserved.</p>
-          <p className="text-slate-500">College Registrar & Information Technology Services</p>
+          <div className="flex items-center gap-4">
+            <p className="text-slate-500">College Registrar & Information Technology Services</p>
+          </div>
         </div>
       </footer>
     </div>

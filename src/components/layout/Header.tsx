@@ -261,7 +261,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, setActive
             </AnimatePresence>
           </div>
 
-          {/* Quick Light/Dark Mode Switcher */}
           <ThemeToggle
             id="header-theme-toggle-btn"
             variant="button"
@@ -335,8 +334,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, setActive
                     <Settings className="w-4 h-4 text-slate-400" />
                     Settings & Preferences
                   </button>
-
-
 
                   <button
                     id="profile-menu-logout-btn"
