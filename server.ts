@@ -86,7 +86,7 @@ async function startServer() {
   app.post(
     "/api/assignments/:assignmentId/submit",
     (req, res, next) => {
-      upload.single("assignmentFile")(req, res, (err) => {
+      upload.single("assignmentFile")(req as any, res as any, (err: any) => {
         if (err instanceof multer.MulterError) {
           if (err.code === "LIMIT_FILE_SIZE") {
             return res.status(413).json({
@@ -320,7 +320,7 @@ async function startServer() {
   // 5. General File Upload API (Allows Student, Faculty, Admin to upload any file)
   app.post(
     "/api/files/upload",
-    upload.single("file"),
+    upload.single("file") as any,
     async (req: express.Request, res: express.Response) => {
       try {
         if (!req.file) {
