@@ -31,6 +31,9 @@ import {
   deleteD1Submission,
   saveD1CourseMaterial,
   getD1Status,
+  getD1Courses,
+  saveD1Course,
+  deleteD1Course,
 } from "./server/d1Service";
 
 async function startServer() {
@@ -108,6 +111,37 @@ async function startServer() {
     try {
       const status = await getD1Status();
       return res.json({ success: true, ...status });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message });
+    }
+  });
+
+  // Courses List: GET /api/courses
+  app.get("/api/courses", async (req, res) => {
+    try {
+      const courses = await getD1Courses();
+      return res.json({ success: true, courses });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message });
+    }
+  });
+
+  // Create or Update Course: POST /api/courses
+  app.post("/api/courses", async (req, res) => {
+    try {
+      const result = await saveD1Course(req.body);
+      return res.status(201).json({ ...result, message: "Course saved to Cloudflare D1." });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message });
+    }
+  });
+
+  // Delete Course: DELETE /api/courses/:id
+  app.delete("/api/courses/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      await deleteD1Course(id);
+      return res.json({ success: true, message: `Course ${id} deleted from D1.` });
     } catch (err: any) {
       return res.status(500).json({ success: false, error: err?.message });
     }

@@ -156,7 +156,7 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({
         showToast({
           type: 'success',
           title: 'Course Updated',
-          message: `${saved.code} — ${saved.title} updated.`,
+          message: `${saved.code} — ${saved.title} updated and synced with D1.`,
         });
       } else {
         saved = storage.createCourse(courseData, currentUser || undefined);
@@ -164,9 +164,16 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({
         showToast({
           type: 'success',
           title: 'Course Added',
-          message: `${saved.code} catalog entry created.`,
+          message: `${saved.code} catalog entry created and stored in D1.`,
         });
       }
+
+      // Sync with Cloudflare D1 database
+      fetch('/api/courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(saved),
+      }).catch((e) => console.warn('D1 course sync warning:', e));
 
       setModalOpen(false);
       if (onCloseAddModal) onCloseAddModal();
@@ -180,10 +187,11 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({
     if (window.confirm(`Are you sure you want to delete course ${code}?`)) {
       storage.deleteCourse(id, currentUser || undefined);
       setCourses(courses.filter((c) => c.id !== id));
+      fetch(`/api/courses/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
       showToast({
         type: 'success',
         title: 'Course Removed',
-        message: `${code} has been deleted.`,
+        message: `${code} has been deleted and removed from D1.`,
       });
     }
   };

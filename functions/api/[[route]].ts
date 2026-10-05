@@ -253,6 +253,76 @@ export async function onRequest(context: { request: Request; env: Env; params: {
       }
     }
 
+    // Courses List: GET /api/courses
+    if (path === "courses" && method === "GET") {
+      if (env.DB) {
+        try {
+          const { results } = await env.DB.prepare(
+            "SELECT * FROM courses ORDER BY code ASC"
+          ).all();
+          return jsonResponse({ success: true, courses: results || [] }, corsHeaders);
+        } catch (e: any) {
+          return jsonResponse({ success: false, error: e.message }, corsHeaders, 500);
+        }
+      }
+      return jsonResponse({ success: true, courses: [] }, corsHeaders);
+    }
+
+    // Create or Update Course: POST /api/courses
+    if (path === "courses" && method === "POST") {
+      const body = await request.json() as any;
+      const id = body.id || `course-${Date.now()}`;
+      const code = (body.code || body.courseCode || "CS-101").toUpperCase();
+      const title = body.title || body.courseName || "New Course";
+      const departmentId = body.departmentId || body.department_id || "dept-1";
+      const departmentName = body.departmentName || body.department_name || "Computer Science";
+      const semester = Number(body.semester || 1);
+      const academicYear = body.academicYear || body.academic_year || "2026-2027";
+      const facultyId = body.facultyId || body.faculty_id || "fac-201";
+      const facultyName = body.facultyName || body.faculty_name || "Faculty";
+      const description = body.description || "";
+      const credits = Number(body.credits || 4);
+      const status = body.status || "active";
+
+      if (env.DB) {
+        try {
+          await env.DB.prepare(`
+            INSERT INTO courses (
+              id, code, title, department_id, department_name, semester, academic_year,
+              faculty_id, faculty_name, description, credits, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              code = excluded.code,
+              title = excluded.title,
+              department_id = excluded.department_id,
+              department_name = excluded.department_name,
+              faculty_id = excluded.faculty_id,
+              faculty_name = excluded.faculty_name,
+              description = excluded.description,
+              credits = excluded.credits,
+              status = excluded.status;
+          `).bind(
+            id, code, title, departmentId, departmentName, semester, academicYear,
+            facultyId, facultyName, description, credits, status
+          ).run();
+          return jsonResponse({ success: true, id, message: "Course saved in Cloudflare D1" }, corsHeaders, 201);
+        } catch (e: any) {
+          return jsonResponse({ success: false, error: e.message }, corsHeaders, 500);
+        }
+      }
+      return jsonResponse({ success: true, id }, corsHeaders, 201);
+    }
+
+    // Delete Course: DELETE /api/courses/:id
+    if (path.startsWith("courses/") && method === "DELETE") {
+      const courseId = path.replace("courses/", "");
+      if (env.DB) {
+        await env.DB.prepare("DELETE FROM courses WHERE id = ?").bind(courseId).run();
+        return jsonResponse({ success: true, message: `Course ${courseId} deleted from D1` }, corsHeaders);
+      }
+      return jsonResponse({ success: true }, corsHeaders);
+    }
+
     // 2. Assignments List: GET /api/assignments
     if (path === "assignments" && method === "GET") {
       if (env.DB) {

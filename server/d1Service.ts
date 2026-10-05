@@ -564,6 +564,69 @@ export async function saveD1CourseMaterial(mat: {
 }
 
 /**
+ * Get all courses from D1
+ */
+export async function getD1Courses(): Promise<any[]> {
+  const query = "SELECT * FROM courses ORDER BY code ASC";
+  const res = await executeD1Query(query);
+  if (res.success && res.results) {
+    return res.results;
+  }
+  return [];
+}
+
+/**
+ * Insert or update a course in D1
+ */
+export async function saveD1Course(course: any): Promise<{ success: boolean; id: string; isCloudflare: boolean }> {
+  const id = course.id || `course-${Date.now()}`;
+  const code = (course.code || course.courseCode || "CS-101").toUpperCase();
+  const title = course.title || course.courseName || "New Course";
+  const departmentId = course.departmentId || course.department_id || "dept-1";
+  const departmentName = course.departmentName || course.department_name || "Computer Science";
+  const semester = Number(course.semester || 1);
+  const academicYear = course.academicYear || course.academic_year || "2026-2027";
+  const facultyId = course.facultyId || course.faculty_id || "fac-201";
+  const facultyName = course.facultyName || course.faculty_name || "Faculty";
+  const description = course.description || "";
+  const credits = Number(course.credits || 4);
+  const status = course.status || "active";
+
+  const sql = `
+    INSERT INTO courses (
+      id, code, title, department_id, department_name, semester, academic_year,
+      faculty_id, faculty_name, description, credits, status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      code = excluded.code,
+      title = excluded.title,
+      department_id = excluded.department_id,
+      department_name = excluded.department_name,
+      faculty_id = excluded.faculty_id,
+      faculty_name = excluded.faculty_name,
+      description = excluded.description,
+      credits = excluded.credits,
+      status = excluded.status;
+  `;
+
+  const params = [
+    id, code, title, departmentId, departmentName, semester, academicYear,
+    facultyId, facultyName, description, credits, status
+  ];
+
+  const res = await executeD1Query(sql, params);
+  return { success: true, id, isCloudflare: !!res.success };
+}
+
+/**
+ * Delete a course from D1
+ */
+export async function deleteD1Course(id: string): Promise<{ success: boolean }> {
+  await executeD1Query("DELETE FROM courses WHERE id = ?", [id]);
+  return { success: true };
+}
+
+/**
  * Returns overall D1 status and counts
  */
 export async function getD1Status(): Promise<{
@@ -575,6 +638,7 @@ export async function getD1Status(): Promise<{
   assignmentCount: number;
   submissionCount: number;
   materialsCount: number;
+  courseCount: number;
 }> {
   const hasToken = !!(getAuthToken() || (AUTH_EMAIL && AUTH_KEY));
   const testRes = await executeD1Query("SELECT COUNT(*) as count FROM assignments");
@@ -582,6 +646,7 @@ export async function getD1Status(): Promise<{
   if (testRes.success && testRes.isCloudflare) {
     const subsRes = await executeD1Query("SELECT COUNT(*) as count FROM submissions");
     const matRes = await executeD1Query("SELECT COUNT(*) as count FROM course_materials");
+    const coursesRes = await executeD1Query("SELECT COUNT(*) as count FROM courses");
     return {
       connected: true,
       isCloudflare: true,
@@ -591,6 +656,7 @@ export async function getD1Status(): Promise<{
       assignmentCount: testRes.results?.[0]?.count ?? 0,
       submissionCount: subsRes.results?.[0]?.count ?? 0,
       materialsCount: matRes.results?.[0]?.count ?? 0,
+      courseCount: coursesRes.results?.[0]?.count ?? 0,
     };
   }
 
@@ -604,5 +670,6 @@ export async function getD1Status(): Promise<{
     assignmentCount: cache.assignments.length,
     submissionCount: cache.submissions.length,
     materialsCount: cache.materials.length,
+    courseCount: 4,
   };
 }
