@@ -28,5 +28,95 @@
       "receiptId": "REC-MUCCXE9S",
       "version": 1
     }
+  },
+  {
+    "id": "meta_3e81f2a3-97f3-4190-a769-861c8dcd3367",
+    "fileKey": "secfile_ecd11242-0e13-405d-9f6d-d1cf7cb78355_37ae28d995c8.jpg",
+    "originalFilename": "webpage_logo_1791176307030-Zw-ItTEr.jpg",
+    "fileSize": 489732,
+    "fileSizeFormatted": "478 KB",
+    "mimeType": "image/jpeg",
+    "extension": "jpg",
+    "sha256Hash": "2480585f42ab32c4600ed14fefe34de26e490c9e3b4e3b37dd9cf485af4118db",
+    "uploadTime": "2026-10-05T08:23:22.656Z",
+    "user": {
+      "id": "user-stu-1",
+      "name": "Sujoy Dutta",
+      "email": "sujoydutta830@gmail.com",
+      "role": "student",
+      "studentIdNumber": "2024-1388"
+    },
+    "assignment": {
+      "id": "asg-auto-course-numerical",
+      "title": "BCA-301 — Coursework & Assignment Submission",
+      "courseId": "course-numerical",
+      "courseCode": "BCA-301",
+      "courseName": "Numerical Methods"
+    },
+    "submission": {
+      "id": "SUB-1537",
+      "receiptId": "REC-MUUZG36K",
+      "version": 1
+    }
+  },
+  {
+    "id": "meta_c0df236a-737a-47b8-bc99-d9c54af1e96e",
+    "fileKey": "secfile_ef9f6e9f-1ae0-40c7-af43-ef719d1efb9f_c612f2460150.jpg",
+    "originalFilename": "webpage_logo_1791176307030-Zw-ItTEr.jpg",
+    "fileSize": 489732,
+    "fileSizeFormatted": "478 KB",
+    "mimeType": "image/jpeg",
+    "extension": "jpg",
+    "sha256Hash": "2480585f42ab32c4600ed14fefe34de26e490c9e3b4e3b37dd9cf485af4118db",
+    "uploadTime": "2026-10-05T08:35:06.648Z",
+    "user": {
+      "id": "user-stu-1",
+      "name": "Sujoy Dutta",
+      "email": "sujoydutta830@gmail.com",
+      "role": "student",
+      "studentIdNumber": "2024-1388"
+    },
+    "assignment": {
+      "id": "asg-auto-course-micro",
+      "title": "CS-401 — Coursework & Assignment Submission",
+      "courseId": "course-micro",
+      "courseCode": "CS-401",
+      "courseName": "Microprocessor Microcontroller"
+    },
+    "submission": {
+      "id": "SUB-8175",
+      "receiptId": "REC-MUUZV6DW",
+      "version": 1
+    }
+  },
+  {
+    "id": "meta_852d1062-b275-487f-9b1c-e07a9da349bc",
+    "fileKey": "secfile_35965477-c099-4ce9-acfb-2680e9240b3c_f423c77994d2.jpg",
+    "originalFilename": "webpage_logo_1791176307030.jpg",
+    "fileSize": 58,
+    "fileSizeFormatted": "0 KB",
+    "mimeType": "image/jpeg",
+    "extension": "jpg",
+    "sha256Hash": "91ac61d5d11acc60b73b5187e1a889445b11752e791e52f30db7924f473478aa",
+    "uploadTime": "2026-10-05T10:37:22.192Z",
+    "user": {
+      "id": "stu-101",
+      "name": "Sujoy Dutta",
+      "email": "sujoydutta830@gmail.com",
+      "role": "student",
+      "studentIdNumber": "2024-1388"
+    },
+    "assignment": {
+      "id": "asg-501",
+      "title": "SQL Normalization & BCNF Implementation",
+      "courseId": "",
+      "courseCode": "CS-301",
+      "courseName": "Database Systems"
+    },
+    "submission": {
+      "id": "sub-9001",
+      "receiptId": "REC-9001",
+      "version": 1
+    }
   }
 ]
