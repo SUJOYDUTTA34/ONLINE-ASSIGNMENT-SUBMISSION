@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../services/storage';
 import { UserAvatar } from './UserAvatar';
 import { useNotifications } from '../../context/NotificationContext';
+import { compressImage } from '../../lib/imageUtils';
 import {
   User as UserIcon,
   Mail,
@@ -74,69 +75,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigateToSe
   const pendingToGrade = facultySubmissions.filter((s) => s.status === 'submitted' || s.status === 'late');
 
   // Handle Avatar Image Upload
-  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      showToast({
-        type: 'error',
-        title: 'Invalid File',
-        message: 'Please select a valid image file (JPG, PNG, WEBP, or GIF).',
-      });
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      showToast({
-        type: 'error',
-        title: 'File Too Large',
-        message: 'Profile image must be less than 10MB.',
-      });
-      return;
-    }
-
-    setUploadingAvatar(true);
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        await updateProfile({ avatarUrl: dataUrl });
-        showToast({
-          type: 'success',
-          title: 'Profile Picture Updated',
-          message: 'Your profile photo has been successfully updated.',
-        });
-      }
-      setUploadingAvatar(false);
-    };
-    reader.onerror = () => {
-      setUploadingAvatar(false);
-      showToast({
-        type: 'error',
-        title: 'Upload Failed',
-        message: 'Could not read image file. Please try another photo.',
-      });
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  };
-
-  // Handle Remove/Reset Avatar to Default
-  const handleDeleteAvatar = async () => {
-    setUploadingAvatar(true);
-    // Reset to empty string or default initial avatar
-    await updateProfile({ avatarUrl: '' });
-    setUploadingAvatar(false);
-    showToast({
-      type: 'info',
-      title: 'Profile Picture Removed',
-      message: 'Your profile photo has been reset to default.',
-    });
-  };
-
-  // Handle Cover / Banner Image Upload
-  const handleCoverFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -153,35 +92,95 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigateToSe
       showToast({
         type: 'error',
         title: 'File Too Large',
-        message: 'Cover banner image must be less than 15MB.',
+        message: 'Profile image must be less than 15MB.',
+      });
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      // Compress and scale photo to optimal avatar dimensions (360x360)
+      const dataUrl = await compressImage(file, 360, 360, 0.88);
+      if (dataUrl) {
+        await updateProfile({ avatarUrl: dataUrl });
+        showToast({
+          type: 'success',
+          title: 'Profile Picture Updated',
+          message: 'Your profile photo has been saved and will stay permanent.',
+        });
+      }
+    } catch (err: any) {
+      console.error('Avatar processing error:', err);
+      showToast({
+        type: 'error',
+        title: 'Upload Failed',
+        message: 'Could not process image file. Please try another photo.',
+      });
+    } finally {
+      setUploadingAvatar(false);
+      e.target.value = '';
+    }
+  };
+
+  // Handle Remove/Reset Avatar to Default
+  const handleDeleteAvatar = async () => {
+    setUploadingAvatar(true);
+    // Reset to empty string
+    await updateProfile({ avatarUrl: '' });
+    setUploadingAvatar(false);
+    showToast({
+      type: 'info',
+      title: 'Profile Picture Removed',
+      message: 'Your profile photo has been reset to default initials.',
+    });
+  };
+
+  // Handle Cover / Banner Image Upload
+  const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast({
+        type: 'error',
+        title: 'Invalid File',
+        message: 'Please select a valid image file (JPG, PNG, WEBP, or GIF).',
+      });
+      return;
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      showToast({
+        type: 'error',
+        title: 'File Too Large',
+        message: 'Cover banner image must be less than 20MB.',
       });
       return;
     }
 
     setUploadingCover(true);
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      // Compress and scale banner to optimal dimensions (1200x450)
+      const dataUrl = await compressImage(file, 1200, 450, 0.85);
       if (dataUrl) {
         await updateProfile({ coverUrl: dataUrl });
         showToast({
           type: 'success',
           title: 'Cover Banner Updated',
-          message: 'Your profile cover banner has been updated successfully.',
+          message: 'Your profile cover banner has been saved permanently.',
         });
       }
-      setUploadingCover(false);
-    };
-    reader.onerror = () => {
-      setUploadingCover(false);
+    } catch (err: any) {
+      console.error('Cover processing error:', err);
       showToast({
         type: 'error',
         title: 'Upload Failed',
-        message: 'Could not read banner file. Please try another image.',
+        message: 'Could not process banner file. Please try another image.',
       });
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+    } finally {
+      setUploadingCover(false);
+      e.target.value = '';
+    }
   };
 
   // Handle Remove/Reset Cover Banner

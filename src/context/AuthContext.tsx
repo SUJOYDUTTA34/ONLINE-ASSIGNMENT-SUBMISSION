@@ -281,6 +281,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (updatedData: Partial<User>) => {
     if (!user) return false;
+
+    try {
+      if (updatedData.avatarUrl !== undefined) {
+        if (updatedData.avatarUrl && updatedData.avatarUrl.trim() !== '') {
+          localStorage.setItem(`oass_custom_avatar_${user.id}`, updatedData.avatarUrl);
+        } else {
+          localStorage.removeItem(`oass_custom_avatar_${user.id}`);
+        }
+      }
+
+      if (updatedData.coverUrl !== undefined) {
+        if (updatedData.coverUrl && updatedData.coverUrl.trim() !== '') {
+          localStorage.setItem(`oass_custom_cover_${user.id}`, updatedData.coverUrl);
+        } else {
+          localStorage.removeItem(`oass_custom_cover_${user.id}`);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not write custom photo key to localStorage:', e);
+    }
+
     const updated: User = {
       ...user,
       ...updatedData,

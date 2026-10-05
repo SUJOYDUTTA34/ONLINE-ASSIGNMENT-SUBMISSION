@@ -205,7 +205,7 @@ export const INITIAL_USERS: User[] = [
     name: 'Sujoy Dutta',
     email: 'sujoydutta830@gmail.com',
     role: 'student',
-    avatarUrl: sujoyDuttaAvatar,
+    avatarUrl: '',
     status: 'active',
     phone: '+91 8967099896',
     departmentId: 'dept-1',

@@ -72,6 +72,24 @@ function setItem<T>(key: string, val: T): void {
   }
 }
 
+function hydrateUserCustomPhotos(user: User): User {
+  if (!user) return user;
+  try {
+    const customAvatar = localStorage.getItem(`oass_custom_avatar_${user.id}`);
+    const customCover = localStorage.getItem(`oass_custom_cover_${user.id}`);
+    let updated = { ...user };
+    if (customAvatar !== null && customAvatar !== undefined) {
+      updated.avatarUrl = customAvatar;
+    }
+    if (customCover !== null && customCover !== undefined) {
+      updated.coverUrl = customCover;
+    }
+    return updated;
+  } catch {
+    return user;
+  }
+}
+
 // Storage API
 export const storage = {
   init() {
@@ -92,13 +110,11 @@ export const storage = {
     // Remove old Sarah Jenkins or Marcus Brody if they exist
     cleanUsers = cleanUsers.filter(u => u.email !== 'sarah.jenkins@campus.edu' && u.email !== 'marcus.brody@campus.edu');
 
-    // Only set initial fallback avatar if user has no avatar set at all
+    // Retain custom photos or fallback only if user has nothing
     cleanUsers = cleanUsers.map((u) => {
-      if (u.id === 'user-stu-1' && !u.avatarUrl) {
-        return { ...u, avatarUrl: sujoyDuttaAvatar };
-      }
-      if (u.id === 'user-fac-1' && !u.avatarUrl) {
-        return { ...u, avatarUrl: shovanRoyAvatar };
+      const customAvatar = localStorage.getItem(`oass_custom_avatar_${u.id}`);
+      if (customAvatar !== null) {
+        return { ...u, avatarUrl: customAvatar };
       }
       return u;
     });
@@ -129,7 +145,8 @@ export const storage = {
     const users = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
     const facIdx = users.findIndex((u) => u.id === 'user-fac-1');
     if (facIdx >= 0 && (users[facIdx].name === 'Prof. Robert Chen' || !users[facIdx].designation)) {
-      const existingAvatar = users[facIdx].avatarUrl;
+      const customAvatar = localStorage.getItem('oass_custom_avatar_user-fac-1');
+      const existingAvatar = customAvatar !== null ? customAvatar : users[facIdx].avatarUrl;
       const existingCover = users[facIdx].coverUrl;
       users[facIdx] = {
         ...users[facIdx],
@@ -155,13 +172,14 @@ export const storage = {
     const updatedUsers = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
     const stuIdx = updatedUsers.findIndex((u) => u.id === 'user-stu-1');
     if (stuIdx >= 0) {
-      const existingAvatar = updatedUsers[stuIdx].avatarUrl;
+      const customAvatar = localStorage.getItem('oass_custom_avatar_user-stu-1');
+      const existingAvatar = customAvatar !== null ? customAvatar : (updatedUsers[stuIdx].avatarUrl !== undefined ? updatedUsers[stuIdx].avatarUrl : '');
       const existingCover = updatedUsers[stuIdx].coverUrl;
       updatedUsers[stuIdx] = {
         ...updatedUsers[stuIdx],
         name: updatedUsers[stuIdx].name || 'Sujoy Dutta',
         email: 'sujoydutta830@gmail.com',
-        avatarUrl: existingAvatar !== undefined ? existingAvatar : sujoyDuttaAvatar,
+        avatarUrl: existingAvatar,
         coverUrl: existingCover,
         phone: updatedUsers[stuIdx].phone || '+91 8967099896',
         departmentName: 'Computer Science',
@@ -240,7 +258,8 @@ export const storage = {
     const uid = this.getCurrentUserId();
     if (!uid) return undefined;
     const users = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
-    return users.find((u) => u.id === uid);
+    const found = users.find((u) => u.id === uid);
+    return found ? hydrateUserCustomPhotos(found) : undefined;
   },
 
   // Users (Role-aware Least Privilege Field-Level Filtering)
@@ -248,7 +267,8 @@ export const storage = {
     const activeRequester = requester || this.getCurrentUser();
     const list = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
     return list.map((u) => {
-      const sanitized = filterUserDataForClient(u, activeRequester);
+      const hydrated = hydrateUserCustomPhotos(u);
+      const sanitized = filterUserDataForClient(hydrated, activeRequester);
       return {
         ...sanitized,
         createdAt: sanitized.createdAt || sanitized.joinedDate,
@@ -261,7 +281,8 @@ export const storage = {
     const users = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
     const found = users.find((u) => u.id === id);
     if (!found) return undefined;
-    return filterUserDataForClient(found, activeRequester) as User;
+    const hydrated = hydrateUserCustomPhotos(found);
+    return filterUserDataForClient(hydrated, activeRequester) as User;
   },
 
   getUserByEmail(email: string): User | undefined {
@@ -277,7 +298,10 @@ export const storage = {
         (u.studentIdNumber && u.studentIdNumber.toLowerCase() === term) ||
         (u.employeeIdNumber && u.employeeIdNumber.toLowerCase() === term)
     );
-    if (directMatch) return filterUserDataForClient(directMatch, { id: directMatch.id, role: directMatch.role }) as User;
+    if (directMatch) {
+      const hydrated = hydrateUserCustomPhotos(directMatch);
+      return filterUserDataForClient(hydrated, { id: hydrated.id, role: hydrated.role }) as User;
+    }
 
     return undefined;
   },
