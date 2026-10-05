@@ -10,6 +10,11 @@ import { GraduationCap, ArrowRight, Eye } from 'lucide-react';
 const AppContent: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
 
+  // Background sync with Cloudflare D1 database
+  React.useEffect(() => {
+    fetch('/api/sync-d1', { method: 'POST' }).catch(() => {});
+  }, []);
+
   // Auth Modals
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');

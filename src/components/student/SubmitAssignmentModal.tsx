@@ -193,8 +193,12 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
 
       const formData = new FormData();
       formData.append('assignmentFile', file);
+      formData.append('file', file);
+      formData.append('assignmentId', assignment.id);
       formData.append('userId', user.id);
+      formData.append('studentId', user.id);
       formData.append('userName', user.name);
+      formData.append('studentName', user.name);
       formData.append('userEmail', user.email);
       formData.append('userRole', user.role);
       formData.append('studentIdNumber', user.studentIdNumber || '');
@@ -203,7 +207,6 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
       formData.append('courseCode', assignment.courseCode);
       formData.append('courseName', assignment.courseName);
       formData.append('maxFileSizeMb', '100');
-      // No restricted allowedTypes so user can upload any desired file format
       formData.append('allowedTypes', JSON.stringify([]));
 
       setUploadProgress(65);

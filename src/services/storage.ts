@@ -97,10 +97,20 @@ export const storage = {
     getItem(KEYS.DEPARTMENTS, INITIAL_DEPARTMENTS);
     setItem(KEYS.COURSES, INITIAL_COURSES);
     setItem(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
-    setItem(KEYS.SUBMISSIONS, INITIAL_SUBMISSIONS);
+    getItem(KEYS.SUBMISSIONS, []);
     getItem(KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS);
     getItem(KEYS.AUDIT_LOGS, INITIAL_AUDIT_LOGS);
     getItem(KEYS.EMAIL_TEMPLATES, INITIAL_EMAIL_TEMPLATES);
+
+    // Clean up old mock demo submissions so student starts with clean real-time history
+    const storedSubs = getItem<Submission[]>(KEYS.SUBMISSIONS, []);
+    const cleanSubs = storedSubs.filter(
+      (s) =>
+        !['sub-1', 'sub-2', 'sub-901', 'sub-902'].includes(s.id) &&
+        s.fileName !== 'SujoyDutta_DBMS_BCNF.sql' &&
+        s.fileName !== 'SujoyDutta_Python_Data_Pipeline.pdf'
+    );
+    setItem(KEYS.SUBMISSIONS, cleanSubs);
 
     // Clean up old dummy student profiles and fix cached avatar paths
     let cleanUsers = getItem<User[]>(KEYS.USERS, INITIAL_USERS).filter(
