@@ -74,6 +74,14 @@ export const StudentSubmissions: React.FC<StudentSubmissionsProps> = ({
   );
 
   const handleDownloadUploadedFile = (s: Submission) => {
+    if (s.fileData && s.fileData.startsWith('data:')) {
+      const a = document.createElement('a');
+      a.href = s.fileData;
+      a.download = s.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+      a.click();
+      return;
+    }
+
     const fileKey = s.fileKey || s.storedFileName;
     if (fileKey && user) {
       const url = `/api/files/download/${encodeURIComponent(fileKey)}?userId=${encodeURIComponent(
@@ -82,7 +90,7 @@ export const StudentSubmissions: React.FC<StudentSubmissionsProps> = ({
       window.location.href = url;
       return;
     }
-    // SECURITY FIX: Force application/octet-stream binary download to prevent inline browser execution
+    // Fallback binary download
     const blob = new Blob([`Institutional Coursework Submission File: ${s.fileName}\nSubmitted By: ${s.studentName} (${s.studentIdNumber})\nSubmission Timestamp: ${s.submittedAt}\nDigital Receipt: ${s.receiptId}`], {
       type: 'application/octet-stream',
     });

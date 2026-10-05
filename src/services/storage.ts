@@ -1360,6 +1360,18 @@ export const storage = {
     return newSubmission;
   },
 
+  saveSubmissionDirect(submission: Submission): Submission {
+    const allSubmissions = getItem<Submission[]>(KEYS.SUBMISSIONS, INITIAL_SUBMISSIONS);
+    const index = allSubmissions.findIndex((s) => s.id === submission.id);
+    if (index >= 0) {
+      allSubmissions[index] = submission;
+    } else {
+      allSubmissions.unshift(submission);
+    }
+    setItem(KEYS.SUBMISSIONS, allSubmissions);
+    return submission;
+  },
+
   deleteSubmission(submissionId: string, requester?: User): boolean {
     const active = requester || this.getCurrentUser();
     if (!active) {
