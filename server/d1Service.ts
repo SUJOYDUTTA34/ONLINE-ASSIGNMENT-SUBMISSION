@@ -627,6 +627,110 @@ export async function deleteD1Course(id: string): Promise<{ success: boolean }> 
 }
 
 /**
+ * Get all users from D1
+ */
+export async function getD1Users(): Promise<any[]> {
+  const query = "SELECT * FROM users ORDER BY created_at DESC";
+  const res = await executeD1Query(query);
+  if (res.success && res.results) {
+    return res.results;
+  }
+  return [];
+}
+
+/**
+ * Insert or update a user in D1
+ */
+export async function saveD1User(user: any): Promise<{ success: boolean; id: string; isCloudflare: boolean }> {
+  let id = user.id || `user-${user.role || "stu"}-${Date.now()}`;
+  const name = user.name || "User";
+  const email = (user.email || "").trim().toLowerCase();
+  const role = user.role || "student";
+  const department = user.department || user.departmentName || user.department_name || "";
+  const studentIdNumber = user.studentIdNumber || user.student_id_number || "";
+  const avatarUrl = user.avatarUrl || user.avatar_url || "";
+  const coverUrl = user.coverUrl || user.cover_url || "";
+  const phone = user.phone || "";
+  const departmentId = user.departmentId || user.department_id || "";
+  const departmentName = user.departmentName || user.department_name || department;
+  const designation = user.designation || "";
+  const program = user.program || "";
+  const semester = user.semester ? Number(user.semester) : null;
+  const institution = user.institution || "Midnapore College Autonomous";
+  const status = user.status || "active";
+  const bio = user.bio || "";
+  const employeeIdNumber = user.employeeIdNumber || user.employee_id_number || "";
+  const updatedAt = new Date().toISOString();
+
+  // Check if user exists by ID or by email
+  const existingRes = await executeD1Query(
+    "SELECT id FROM users WHERE id = ? OR email = ? LIMIT 1",
+    [id, email]
+  );
+
+  let res;
+  if (existingRes.success && existingRes.results && existingRes.results.length > 0) {
+    const existingId = existingRes.results[0].id;
+    id = existingId;
+    const updateSql = `
+      UPDATE users SET
+        name = ?,
+        email = ?,
+        role = ?,
+        department = ?,
+        student_id_number = ?,
+        avatar_url = ?,
+        cover_url = ?,
+        phone = ?,
+        department_id = ?,
+        department_name = ?,
+        designation = ?,
+        program = ?,
+        semester = ?,
+        institution = ?,
+        status = ?,
+        bio = ?,
+        employee_id_number = ?,
+        updated_at = ?
+      WHERE id = ?;
+    `;
+    const updateParams = [
+      name, email, role, department, studentIdNumber,
+      avatarUrl, coverUrl, phone, departmentId, departmentName,
+      designation, program, semester, institution, status, bio,
+      employeeIdNumber, updatedAt, id
+    ];
+    res = await executeD1Query(updateSql, updateParams);
+  } else {
+    const insertSql = `
+      INSERT INTO users (
+        id, name, email, role, department, student_id_number,
+        avatar_url, cover_url, phone, department_id, department_name,
+        designation, program, semester, institution, status, bio,
+        employee_id_number, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    `;
+    const insertParams = [
+      id, name, email, role, department, studentIdNumber,
+      avatarUrl, coverUrl, phone, departmentId, departmentName,
+      designation, program, semester, institution, status, bio,
+      employeeIdNumber, updatedAt
+    ];
+    res = await executeD1Query(insertSql, insertParams);
+  }
+
+  return { success: true, id, isCloudflare: !!res?.success };
+}
+
+/**
+ * Delete a user from D1
+ */
+export async function deleteD1User(id: string): Promise<{ success: boolean }> {
+  await executeD1Query("DELETE FROM users WHERE id = ?", [id]);
+  return { success: true };
+}
+
+/**
  * Returns overall D1 status and counts
  */
 export async function getD1Status(): Promise<{
@@ -639,6 +743,7 @@ export async function getD1Status(): Promise<{
   submissionCount: number;
   materialsCount: number;
   courseCount: number;
+  userCount: number;
 }> {
   const hasToken = !!(getAuthToken() || (AUTH_EMAIL && AUTH_KEY));
   const testRes = await executeD1Query("SELECT COUNT(*) as count FROM assignments");
@@ -647,6 +752,7 @@ export async function getD1Status(): Promise<{
     const subsRes = await executeD1Query("SELECT COUNT(*) as count FROM submissions");
     const matRes = await executeD1Query("SELECT COUNT(*) as count FROM course_materials");
     const coursesRes = await executeD1Query("SELECT COUNT(*) as count FROM courses");
+    const usersRes = await executeD1Query("SELECT COUNT(*) as count FROM users");
     return {
       connected: true,
       isCloudflare: true,
@@ -657,6 +763,7 @@ export async function getD1Status(): Promise<{
       submissionCount: subsRes.results?.[0]?.count ?? 0,
       materialsCount: matRes.results?.[0]?.count ?? 0,
       courseCount: coursesRes.results?.[0]?.count ?? 0,
+      userCount: usersRes.results?.[0]?.count ?? 0,
     };
   }
 
@@ -671,5 +778,7 @@ export async function getD1Status(): Promise<{
     submissionCount: cache.submissions.length,
     materialsCount: cache.materials.length,
     courseCount: 4,
+    userCount: 4,
   };
 }
+

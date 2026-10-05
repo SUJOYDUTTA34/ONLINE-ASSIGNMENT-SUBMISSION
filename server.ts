@@ -34,6 +34,9 @@ import {
   getD1Courses,
   saveD1Course,
   deleteD1Course,
+  getD1Users,
+  saveD1User,
+  deleteD1User,
 } from "./server/d1Service";
 
 async function startServer() {
@@ -251,6 +254,68 @@ async function startServer() {
       const id = req.params.id;
       await deleteD1Submission(id);
       return res.json({ success: true, message: `Submission ${id} deleted.` });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message });
+    }
+  });
+
+  // Courses List: GET /api/courses
+  app.get("/api/courses", async (req, res) => {
+    try {
+      const courses = await getD1Courses();
+      return res.json({ success: true, courses });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message });
+    }
+  });
+
+  // Create or Update Course: POST /api/courses
+  app.post("/api/courses", async (req, res) => {
+    try {
+      const result = await saveD1Course(req.body);
+      return res.json({ success: true, ...result });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message });
+    }
+  });
+
+  // Delete Course: DELETE /api/courses/:id
+  app.delete("/api/courses/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      await deleteD1Course(id);
+      return res.json({ success: true, message: `Course ${id} deleted.` });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message });
+    }
+  });
+
+  // Users List: GET /api/users
+  app.get("/api/users", async (req, res) => {
+    try {
+      const users = await getD1Users();
+      return res.json({ success: true, users });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message });
+    }
+  });
+
+  // Create or Update User: POST /api/users
+  app.post("/api/users", async (req, res) => {
+    try {
+      const result = await saveD1User(req.body);
+      return res.json({ success: true, ...result });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message });
+    }
+  });
+
+  // Delete User: DELETE /api/users/:id
+  app.delete("/api/users/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      await deleteD1User(id);
+      return res.json({ success: true, message: `User ${id} deleted.` });
     } catch (err: any) {
       return res.status(500).json({ success: false, error: err?.message });
     }

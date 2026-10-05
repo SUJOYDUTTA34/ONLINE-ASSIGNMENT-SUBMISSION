@@ -366,6 +366,13 @@ export const storage = {
     users.unshift(newUser);
     setItem(KEYS.USERS, users);
 
+    // Sync user creation to Cloudflare D1 database
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newUser),
+    }).catch((e) => console.warn('D1 user sync notice:', e));
+
     if (creator) {
       this.addAuditLog({
         userId: creator.id,
@@ -419,6 +426,13 @@ export const storage = {
     const updated = { ...users[index], ...safeUpdates };
     users[index] = updated;
     setItem(KEYS.USERS, users);
+
+    // Sync user updates to Cloudflare D1 database
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated),
+    }).catch((e) => console.warn('D1 user update notice:', e));
 
     this.addAuditLog({
       userId: resolvedUpdater.id,
@@ -475,6 +489,13 @@ export const storage = {
     }
     setItem(KEYS.USERS, users);
 
+    // Sync user save with Cloudflare D1 database
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(safeUser),
+    }).catch((e) => console.warn('D1 user save notice:', e));
+
     return safeUser as User;
   },
 
@@ -493,6 +514,11 @@ export const storage = {
     const users = this.getUsers().filter((u) => u.id !== id);
     setItem(KEYS.USERS, users);
     removeStoredCredential(id);
+
+    // Sync user deletion with Cloudflare D1 database
+    fetch(`/api/users/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }).catch((e) => console.warn('D1 user delete notice:', e));
 
     if (targetUser) {
       const deletedArchive = getItem<any[]>('oass_deleted_users_v1', []);
@@ -835,6 +861,13 @@ export const storage = {
     courses.push(newCourse);
     setItem(KEYS.COURSES, courses);
 
+    // Sync course with Cloudflare D1 database
+    fetch('/api/courses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCourse),
+    }).catch((e) => console.warn('D1 course sync notice:', e));
+
     // If student created the course, also update student's enrolledCourseIds in user record
     if (resolvedCreator.role === 'student') {
       const users = this.getUsers();
@@ -879,6 +912,13 @@ export const storage = {
       };
       existingAssignments.unshift(defaultAssignment);
       setItem(KEYS.ASSIGNMENTS, existingAssignments);
+
+      // Sync auto-created assignment with D1
+      fetch('/api/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(defaultAssignment),
+      }).catch((e) => console.warn('D1 assignment sync notice:', e));
     }
 
     this.addAuditLog({
@@ -923,6 +963,13 @@ export const storage = {
     courses[index] = updated;
     setItem(KEYS.COURSES, courses);
 
+    // Sync course update with Cloudflare D1
+    fetch('/api/courses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated),
+    }).catch((e) => console.warn('D1 course update notice:', e));
+
     this.addAuditLog({
       userId: resolvedUpdater.id,
       userName: resolvedUpdater.name,
@@ -946,6 +993,14 @@ export const storage = {
       courses.unshift(course);
     }
     setItem(KEYS.COURSES, courses);
+
+    // Sync course save with Cloudflare D1
+    fetch('/api/courses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(course),
+    }).catch((e) => console.warn('D1 course save notice:', e));
+
     return course;
   },
 
@@ -958,6 +1013,11 @@ export const storage = {
     const course = this.getCourseById(id);
     const courses = this.getCourses().filter((c) => c.id !== id);
     setItem(KEYS.COURSES, courses);
+
+    // Sync course deletion with Cloudflare D1
+    fetch(`/api/courses/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }).catch((e) => console.warn('D1 course delete notice:', e));
 
     // Cascade delete assignments for this course
     const assignments = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS).filter((a) => a.courseId !== id);
@@ -1197,6 +1257,13 @@ export const storage = {
         });
       }
     }
+
+    // Sync assignment with Cloudflare D1
+    fetch('/api/assignments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sanitizedAssignment),
+    }).catch((e) => console.warn('D1 assignment sync notice:', e));
 
     return sanitizedAssignment;
   },

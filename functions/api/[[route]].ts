@@ -323,6 +323,98 @@ export async function onRequest(context: { request: Request; env: Env; params: {
       return jsonResponse({ success: true }, corsHeaders);
     }
 
+    // Users List: GET /api/users
+    if (path === "users" && method === "GET") {
+      if (env.DB) {
+        try {
+          const { results } = await env.DB.prepare(
+            "SELECT * FROM users ORDER BY created_at DESC"
+          ).all();
+          return jsonResponse({ success: true, users: results || [] }, corsHeaders);
+        } catch (e: any) {
+          return jsonResponse({ success: false, error: e.message }, corsHeaders, 500);
+        }
+      }
+      return jsonResponse({ success: true, users: [] }, corsHeaders);
+    }
+
+    // Create or Update User: POST /api/users
+    if (path === "users" && method === "POST") {
+      const body = await request.json() as any;
+      const id = body.id || `user-${body.role || "stu"}-${Date.now()}`;
+      const name = body.name || "User";
+      const email = (body.email || "").trim().toLowerCase();
+      const role = body.role || "student";
+      const department = body.department || body.departmentName || body.department_name || "";
+      const studentIdNumber = body.studentIdNumber || body.student_id_number || "";
+      const avatarUrl = body.avatarUrl || body.avatar_url || "";
+      const coverUrl = body.coverUrl || body.cover_url || "";
+      const phone = body.phone || "";
+      const departmentId = body.departmentId || body.department_id || "";
+      const departmentName = body.departmentName || body.department_name || department;
+      const designation = body.designation || "";
+      const program = body.program || "";
+      const semester = body.semester ? Number(body.semester) : null;
+      const institution = body.institution || "Midnapore College Autonomous";
+      const status = body.status || "active";
+      const bio = body.bio || "";
+      const employeeIdNumber = body.employeeIdNumber || body.employee_id_number || "";
+      const updatedAt = new Date().toISOString();
+
+      if (env.DB) {
+        try {
+          const existing = await env.DB.prepare(
+            "SELECT id FROM users WHERE id = ? OR email = ? LIMIT 1"
+          ).bind(id, email).first() as any;
+
+          if (existing && existing.id) {
+            id = existing.id;
+            await env.DB.prepare(`
+              UPDATE users SET
+                name = ?, email = ?, role = ?, department = ?, student_id_number = ?,
+                avatar_url = ?, cover_url = ?, phone = ?, department_id = ?, department_name = ?,
+                designation = ?, program = ?, semester = ?, institution = ?, status = ?, bio = ?,
+                employee_id_number = ?, updated_at = ?
+              WHERE id = ?;
+            `).bind(
+              name, email, role, department, studentIdNumber,
+              avatarUrl, coverUrl, phone, departmentId, departmentName,
+              designation, program, semester, institution, status, bio,
+              employeeIdNumber, updatedAt, id
+            ).run();
+          } else {
+            await env.DB.prepare(`
+              INSERT INTO users (
+                id, name, email, role, department, student_id_number,
+                avatar_url, cover_url, phone, department_id, department_name,
+                designation, program, semester, institution, status, bio,
+                employee_id_number, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind(
+              id, name, email, role, department, studentIdNumber,
+              avatarUrl, coverUrl, phone, departmentId, departmentName,
+              designation, program, semester, institution, status, bio,
+              employeeIdNumber, updatedAt
+            ).run();
+          }
+          return jsonResponse({ success: true, id, message: "User saved in Cloudflare D1" }, corsHeaders, 201);
+        } catch (e: any) {
+          return jsonResponse({ success: false, error: e.message }, corsHeaders, 500);
+        }
+      }
+      return jsonResponse({ success: true, id }, corsHeaders, 201);
+    }
+
+    // Delete User: DELETE /api/users/:id
+    if (path.startsWith("users/") && method === "DELETE") {
+      const userId = path.replace("users/", "");
+      if (env.DB) {
+        await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
+        return jsonResponse({ success: true, message: `User ${userId} deleted from D1` }, corsHeaders);
+      }
+      return jsonResponse({ success: true }, corsHeaders);
+    }
+
     // 2. Assignments List: GET /api/assignments
     if (path === "assignments" && method === "GET") {
       if (env.DB) {
