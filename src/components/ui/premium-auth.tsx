@@ -5,6 +5,7 @@ import { storage } from '../../services/storage';
 import { PasswordStrength } from '@/components/ui/password-strength';
 import { ShinyButton } from '@/components/ui/shiny-button';
 import { ThemeToggle } from '../common/ThemeToggle';
+import webpageLogo from '../../assets/images/webpage_logo_1791176307030.jpg';
 import {
   Mail,
   Lock,
@@ -191,6 +192,15 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             <X className="w-5 h-5" />
           </button>
         )}
+
+        <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-sm border border-neutral-200 dark:border-neutral-700 bg-white flex items-center justify-center p-1 mx-auto mb-3">
+          <img
+            src={webpageLogo}
+            alt="Scholaris Logo"
+            className="w-full h-full object-cover rounded-xl"
+            referrerPolicy="no-referrer"
+          />
+        </div>
 
         <h2 className="text-2xl sm:text-[26px] font-extrabold text-neutral-900 dark:text-white tracking-tight">
           {registeredInfo ? 'Welcome to Scholaris' : mode === 'login' ? 'Welcome Back' : 'Create Account'}
