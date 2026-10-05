@@ -7,7 +7,7 @@ import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button
 import { ShinyButton } from '@/components/ui/shiny-button';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { SonarGrid } from '@/components/ui/sonar-grid';
-import academicLogo from '../../assets/images/academic_crest_logo_1789753031183.jpg';
+import webpageLogo from '../../assets/images/webpage_logo_1791176307030.jpg';
 import { ThemeToggle } from '../common/ThemeToggle';
 import {
   GraduationCap,
@@ -122,7 +122,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl overflow-hidden shadow-xs border border-slate-200/80 dark:border-slate-700 bg-white flex items-center justify-center p-0.5 group shrink-0">
               <img
-                src={academicLogo}
+                src={webpageLogo}
                 alt="Scholaris Academic Crest"
                 className="w-full h-full object-cover rounded-[7px] sm:rounded-[9px] transition-transform duration-300 group-hover:scale-105"
                 referrerPolicy="no-referrer"
@@ -750,7 +750,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
             <div className="flex items-center gap-2 mb-3">
               <div className="w-7 h-7 rounded-lg overflow-hidden border border-slate-700 bg-white flex items-center justify-center">
                 <img
-                  src={academicLogo}
+                  src={webpageLogo}
                   alt="Scholaris Logo"
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"

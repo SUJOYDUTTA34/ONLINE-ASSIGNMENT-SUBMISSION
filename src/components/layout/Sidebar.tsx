@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
-import academicLogo from '../../assets/images/academic_crest_logo_1789753031183.jpg';
+import webpageLogo from '../../assets/images/webpage_logo_1791176307030.jpg';
 import { UserAvatar } from '../common/UserAvatar';
 import {
   LayoutDashboard,
@@ -100,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-700 bg-white flex items-center justify-center p-0.5">
             <img
-              src={academicLogo}
+              src={webpageLogo}
               alt="Scholaris Logo"
               className="w-full h-full object-cover rounded-md"
               referrerPolicy="no-referrer"

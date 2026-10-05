@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { storage } from '../../services/storage';
-import academicLogo from '../../assets/images/academic_crest_logo_1789753031183.jpg';
+import webpageLogo from '../../assets/images/webpage_logo_1791176307030.jpg';
 import {
   GraduationCap,
   Bell,
@@ -95,7 +95,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, setActive
           <div className="flex items-center gap-2.5">
             <div className="relative w-9 h-9 rounded-xl overflow-hidden shadow-xs border border-slate-200/80 dark:border-slate-700 bg-white flex items-center justify-center p-0.5">
               <img
-                src={academicLogo}
+                src={webpageLogo}
                 alt="Scholaris Crest"
                 className="w-full h-full object-cover rounded-[9px]"
                 referrerPolicy="no-referrer"
