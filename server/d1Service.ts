@@ -4,9 +4,28 @@ import path from "path";
 // Cloudflare D1 Credentials & Configuration
 const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || "5fb0fecd021df22c60e523bcc6909ecb";
 const DATABASE_ID = process.env.CLOUDFLARE_D1_DATABASE_ID || "a71f76cb-8197-4ff4-afcd-c501b3ee0bfa";
-const API_TOKEN = process.env.CLOUDFLARE_API_TOKEN || process.env.CF_API_TOKEN || "";
 const AUTH_EMAIL = process.env.CLOUDFLARE_AUTH_EMAIL || "";
 const AUTH_KEY = process.env.CLOUDFLARE_AUTH_KEY || "";
+
+function getAuthToken(): string {
+  if (process.env.CLOUDFLARE_API_TOKEN) {
+    return process.env.CLOUDFLARE_API_TOKEN.trim();
+  }
+  if (process.env.CF_API_TOKEN) {
+    return process.env.CF_API_TOKEN.trim();
+  }
+  try {
+    const tomlPath = path.join(process.env.APPDATA || "", "xdg.config", ".wrangler", "config", "default.toml");
+    if (fs.existsSync(tomlPath)) {
+      const content = fs.readFileSync(tomlPath, "utf-8");
+      const match = content.match(/oauth_token\s*=\s*"([^"]+)"/);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    }
+  } catch (_) {}
+  return "";
+}
 
 const CACHE_FILE = path.join(process.cwd(), "private_storage", "d1_local_cache.json");
 
@@ -45,7 +64,8 @@ function saveLocalCache(data: { assignments: any[]; submissions: any[]; material
  * POST https://api.cloudflare.com/client/v4/accounts/{account_id}/d1/database/{database_id}/query
  */
 export async function executeD1Query<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
-  if (!API_TOKEN && !(AUTH_EMAIL && AUTH_KEY)) {
+  const token = getAuthToken();
+  if (!token && !(AUTH_EMAIL && AUTH_KEY)) {
     return {
       success: false,
       error: "Cloudflare API Token not provided. Using local storage.",
@@ -59,8 +79,8 @@ export async function executeD1Query<T = any>(sql: string, params: any[] = []): 
     "Content-Type": "application/json",
   };
 
-  if (API_TOKEN) {
-    headers["Authorization"] = `Bearer ${API_TOKEN.trim()}`;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   } else if (AUTH_EMAIL && AUTH_KEY) {
     headers["X-Auth-Email"] = AUTH_EMAIL.trim();
     headers["X-Auth-Key"] = AUTH_KEY.trim();
@@ -556,7 +576,7 @@ export async function getD1Status(): Promise<{
   submissionCount: number;
   materialsCount: number;
 }> {
-  const hasToken = !!(API_TOKEN || (AUTH_EMAIL && AUTH_KEY));
+  const hasToken = !!(getAuthToken() || (AUTH_EMAIL && AUTH_KEY));
   const testRes = await executeD1Query("SELECT COUNT(*) as count FROM assignments");
 
   if (testRes.success && testRes.isCloudflare) {
