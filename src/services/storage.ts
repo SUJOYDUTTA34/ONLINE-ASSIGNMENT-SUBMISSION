@@ -1230,6 +1230,11 @@ export const storage = {
       ipAddress: '127.0.0.1',
     });
 
+    // Sync deletion with Cloudflare D1 database
+    fetch(`/api/assignments/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch((e) => {
+      console.warn('Backend assignment deletion sync error:', e);
+    });
+
     return true;
   },
 
@@ -1434,6 +1439,11 @@ export const storage = {
         console.warn('Backend file deletion sync error:', e);
       });
     }
+
+    // Sync deletion with Cloudflare D1 database
+    fetch(`/api/submissions/${encodeURIComponent(submissionId)}`, { method: 'DELETE' }).catch((e) => {
+      console.warn('Backend submission deletion sync error:', e);
+    });
 
     this.addAuditLog({
       userId: active.id,

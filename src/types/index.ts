@@ -112,6 +112,8 @@ export interface Assignment {
   resources: AssignmentResource[];
   status: 'draft' | 'published' | 'archived';
   createdAt: string;
+  fileUrl?: string;
+  fileName?: string;
 }
 
 export interface FileMetadataUser {
