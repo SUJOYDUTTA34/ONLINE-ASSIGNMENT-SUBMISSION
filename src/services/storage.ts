@@ -92,12 +92,12 @@ export const storage = {
     // Remove old Sarah Jenkins or Marcus Brody if they exist
     cleanUsers = cleanUsers.filter(u => u.email !== 'sarah.jenkins@campus.edu' && u.email !== 'marcus.brody@campus.edu');
 
-    // Fix avatar URLs if pointing to raw relative path
+    // Only set initial fallback avatar if user has no avatar set at all
     cleanUsers = cleanUsers.map((u) => {
-      if (u.id === 'user-stu-1') {
+      if (u.id === 'user-stu-1' && !u.avatarUrl) {
         return { ...u, avatarUrl: sujoyDuttaAvatar };
       }
-      if (u.id === 'user-fac-1') {
+      if (u.id === 'user-fac-1' && !u.avatarUrl) {
         return { ...u, avatarUrl: shovanRoyAvatar };
       }
       return u;
@@ -108,7 +108,7 @@ export const storage = {
       if (initU.role === 'faculty' && initU.id !== 'user-fac-1') {
         const idx = cleanUsers.findIndex(u => u.email === initU.email || u.id === initU.id);
         if (idx >= 0) {
-          cleanUsers[idx] = { ...cleanUsers[idx], ...initU };
+          cleanUsers[idx] = { ...initU, ...cleanUsers[idx] };
         } else {
           cleanUsers.push(initU);
         }
@@ -116,7 +116,7 @@ export const storage = {
       if (initU.role === 'admin') {
         const idx = cleanUsers.findIndex(u => u.email.toLowerCase() === initU.email.toLowerCase() || u.id === initU.id);
         if (idx >= 0) {
-          cleanUsers[idx] = { ...cleanUsers[idx], ...initU, role: 'admin' };
+          cleanUsers[idx] = { ...initU, ...cleanUsers[idx], role: 'admin' };
         } else {
           cleanUsers.push(initU);
         }
@@ -125,10 +125,12 @@ export const storage = {
 
     setItem(KEYS.USERS, cleanUsers);
 
-    // Sync faculty user-fac-1 to Prof. Shovan Roy
+    // Sync faculty user-fac-1 to Prof. Shovan Roy (preserving custom avatar & cover)
     const users = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
     const facIdx = users.findIndex((u) => u.id === 'user-fac-1');
     if (facIdx >= 0 && (users[facIdx].name === 'Prof. Robert Chen' || !users[facIdx].designation)) {
+      const existingAvatar = users[facIdx].avatarUrl;
+      const existingCover = users[facIdx].coverUrl;
       users[facIdx] = {
         ...users[facIdx],
         name: 'Shovan Roy',
@@ -140,7 +142,8 @@ export const storage = {
         dateOfJoining: '2015-07-15',
         researchInterests: 'Distributed Systems, Cloud Computing, Wireless Sensor Networks & Data Mining',
         phdMphilTitle: 'Pursuing / High Performance Scalable Distributed Computing Architectures',
-        avatarUrl: shovanRoyAvatar,
+        avatarUrl: existingAvatar || shovanRoyAvatar,
+        coverUrl: existingCover,
         phone: '+91 94340 12345',
         address: 'Dept. of Computer Science, Midnapore College (Autonomous), Midnapore, West Bengal - 721101',
         bio: 'Assistant Professor & HOD in the Department of Computer Science at Midnapore College (Autonomous). Areas of academic inquiry and research include Distributed Computing, Cloud Infrastructures, and Data Mining.',
@@ -148,23 +151,26 @@ export const storage = {
       setItem(KEYS.USERS, users);
     }
 
-    // Sync student user-stu-1 to Sujoy Dutta
+    // Sync student user-stu-1 to Sujoy Dutta (preserving custom avatar & cover)
     const updatedUsers = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
     const stuIdx = updatedUsers.findIndex((u) => u.id === 'user-stu-1');
     if (stuIdx >= 0) {
+      const existingAvatar = updatedUsers[stuIdx].avatarUrl;
+      const existingCover = updatedUsers[stuIdx].coverUrl;
       updatedUsers[stuIdx] = {
         ...updatedUsers[stuIdx],
-        name: 'Sujoy Dutta',
+        name: updatedUsers[stuIdx].name || 'Sujoy Dutta',
         email: 'sujoydutta830@gmail.com',
-        avatarUrl: sujoyDuttaAvatar,
-        phone: '+91 8967099896',
+        avatarUrl: existingAvatar !== undefined ? existingAvatar : sujoyDuttaAvatar,
+        coverUrl: existingCover,
+        phone: updatedUsers[stuIdx].phone || '+91 8967099896',
         departmentName: 'Computer Science',
         studentIdNumber: '2024-1388',
         semester: 5,
         program: 'Computer Science (B.Sc.) - 3rd Year',
         institution: 'Midnapore College Autonomous',
-        address: 'Midnapore College Autonomous, Midnapore, West Bengal - 721101',
-        bio: 'I am Sujoy Dutta, a motivated student interested in technology, software development, and learning new skills. I enjoy working on academic projects, exploring modern technologies, and improving my technical and problem-solving abilities.',
+        address: updatedUsers[stuIdx].address || 'Midnapore College Autonomous, Midnapore, West Bengal - 721101',
+        bio: updatedUsers[stuIdx].bio || 'I am Sujoy Dutta, a motivated student interested in technology, software development, and learning new skills. I enjoy working on academic projects, exploring modern technologies, and improving my technical and problem-solving abilities.',
       };
       setItem(KEYS.USERS, updatedUsers);
     }

@@ -9,6 +9,7 @@ export interface User {
   password?: string;
   role: UserRole;
   avatarUrl: string;
+  coverUrl?: string;
   status: UserStatus;
   phone?: string;
   address?: string;
@@ -167,6 +168,7 @@ export interface Submission {
   fileType: string;
   fileData?: string;
   fileMetadata?: FileUploadMetadata;
+  r2Url?: string;
   comments?: string;
   submittedAt: string;
   isLate: boolean;

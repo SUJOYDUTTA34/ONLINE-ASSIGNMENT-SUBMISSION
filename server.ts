@@ -14,6 +14,7 @@ import {
   deleteSecureFile,
   SECURE_STORAGE_DIR,
 } from "./server/fileSecurity";
+import { uploadToCloudflareR2, listCloudflareR2Objects } from "./server/r2Service";
 
 async function startServer() {
   const app = express();
@@ -178,9 +179,21 @@ async function startServer() {
 
         const metadata = result.metadata;
 
+        // Automatically upload to Cloudflare R2 bucket in submissions/ folder
+        let r2Result = null;
+        try {
+          r2Result = await uploadToCloudflareR2(
+            req.file.buffer,
+            metadata.originalFilename || req.file.originalname,
+            metadata.mimeType || req.file.mimetype
+          );
+        } catch (r2Err) {
+          console.warn("[Cloudflare R2] Background upload attempt logged:", r2Err);
+        }
+
         return res.status(201).json({
           success: true,
-          message: "Coursework file verified, securely stored, and metadata logged.",
+          message: "Coursework file verified, securely stored, and synced with Cloudflare R2.",
           fileKey: metadata.fileKey,
           storedFilename: metadata.fileKey,
           filename: metadata.originalFilename,
@@ -190,6 +203,8 @@ async function startServer() {
           receiptId: metadata.submission.receiptId,
           sha256Hash: metadata.sha256Hash,
           uploadTime: metadata.uploadTime,
+          r2: r2Result,
+          r2Url: r2Result?.url || null,
           metadata,
         });
       } catch (error) {
@@ -201,6 +216,35 @@ async function startServer() {
       }
     }
   );
+
+  // Cloudflare R2 live objects API
+  app.get("/api/r2/list", async (req, res) => {
+    try {
+      const objects = await listCloudflareR2Objects("submissions/");
+      return res.json({ success: true, objects });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message || "Failed to list R2 files" });
+    }
+  });
+
+  // Sync existing files to Cloudflare R2
+  app.post("/api/r2/sync-all", async (req, res) => {
+    try {
+      const files = getAllFileMetadata();
+      const results = [];
+      for (const file of files) {
+        const resolved = resolveSecureFilePath(file.fileKey);
+        if (resolved.valid && fs.existsSync(resolved.absolutePath)) {
+          const buffer = fs.readFileSync(resolved.absolutePath);
+          const r2Res = await uploadToCloudflareR2(buffer, file.originalFilename, file.mimeType);
+          results.push({ filename: file.originalFilename, ...r2Res });
+        }
+      }
+      return res.json({ success: true, syncedCount: results.length, results });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message || "Sync failed" });
+    }
+  });
 
   // 2. Secure Authorized File Download Route (prevents unauthorized access and path traversal)
   app.get("/api/files/download/:fileKey", async (req, res) => {

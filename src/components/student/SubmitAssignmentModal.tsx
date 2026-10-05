@@ -185,10 +185,11 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
     try {
       let storedFilename = `submission_${assignment.id}_${user.id}_${Date.now()}.${file.name.split('.').pop()}`;
       let serverMetadata: any = null;
+      let serverR2Url: string | undefined = undefined;
 
-      // Step progress: Validate & Upload to secure server vault
+      // Step progress: Validate & Upload to secure server vault & Cloudflare R2
       setUploadProgress(35);
-      setStatusText('Validating MIME type & signature integrity...');
+      setStatusText('Validating MIME type & syncing with Cloudflare R2...');
 
       const formData = new FormData();
       formData.append('assignmentFile', file);
@@ -206,7 +207,7 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
       formData.append('allowedTypes', JSON.stringify([]));
 
       setUploadProgress(65);
-      setStatusText('Encrypting & storing in private vault...');
+      setStatusText('Streaming to Cloudflare R2 storage...');
 
       try {
         const response = await fetch(`/api/assignments/${assignment.id}/submit`, {
@@ -227,6 +228,9 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
           }
           if (resData.metadata) {
             serverMetadata = resData.metadata;
+          }
+          if (resData.r2Url) {
+            serverR2Url = resData.r2Url;
           }
         } else if (!response.ok && contentType.includes('application/json')) {
           const errorData = await response.json().catch(() => ({}));
@@ -253,6 +257,7 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
           fileKey: storedFilename,
           storedFileName: storedFilename,
           fileMetadata: serverMetadata,
+          r2Url: serverR2Url,
           fileSize: serverMetadata?.fileSizeFormatted || `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
           fileType: serverMetadata?.mimeType || file.type || `application/${file.name.split('.').pop()}`,
           fileData: fileDataUrl || undefined,
