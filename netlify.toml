@@ -2,6 +2,9 @@
   publish = "dist"
   command = "npm run build"
 
+[build.environment]
+  NODE_VERSION = "22"
+
 # SPA Fallback rule so all routes load index.html without 404
 [[redirects]]
   from = "/*"
