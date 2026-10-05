@@ -24,6 +24,22 @@ export async function onRequest(context: { request: Request; env: Env; params: {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Ensure D1 core assignments (asg-501 to asg-504) exist
+  if (env.DB) {
+    try {
+      await env.DB.prepare(
+        `INSERT OR IGNORE INTO assignments (id, course_code, title, description, due_date, max_marks, created_by, created_at)
+         VALUES 
+         ('asg-501', 'CS-301', 'SQL Normalization & BCNF Implementation', 'Design and normalize a university database schema up to BCNF with complex SQL queries and join operations.', '2026-10-15 23:59:00', 50, 'fac-201', '2026-10-05 08:04:00'),
+         ('asg-502', 'CS-302', 'Python Data Analysis Pipeline', 'Build modular Pandas and NumPy analysis script.', '2026-10-20 23:59:00', 40, 'fac-201', '2026-10-05 08:04:00'),
+         ('asg-503', 'BCA-301', 'BCA-301 — Coursework & Assignment Submission', 'Submit assignments, project files, exercises or reports for Numerical Methods.', '2026-11-04 15:23:00', 100, 'fac-201', '2026-10-05 08:04:00'),
+         ('asg-504', 'CS-401', 'CS-401 — Coursework & Assignment Submission', 'Submit assignments, project files, exercises or reports for Microprocessor Microcontroller.', '2026-11-04 15:23:00', 100, 'fac-201', '2026-10-05 08:04:00')`
+      ).run();
+    } catch (e) {
+      // Ignore if table already populated
+    }
+  }
+
   try {
     // Health check & status
     if (path === "health" || path === "") {
@@ -43,23 +59,35 @@ export async function onRequest(context: { request: Request; env: Env; params: {
       if (contentType.includes("multipart/form-data")) {
         const formData = await request.formData();
         const file = (formData.get("assignmentFile") || formData.get("file")) as File | null;
-        const assignmentId = (formData.get("assignmentId") || path.split("/")[1] || "asg-501") as string;
-        const studentId = (formData.get("userId") || formData.get("studentId") || "user-stu-1") as string;
+        const rawAssignmentId = (formData.get("assignmentId") || path.split("/")[1] || "asg-501") as string;
+        const studentId = (formData.get("userId") || formData.get("studentId") || "stu-101") as string;
         const studentName = (formData.get("userName") || formData.get("studentName") || "Sujoy Dutta") as string;
         const studentIdNumber = (formData.get("studentIdNumber") || "2024-1388") as string;
         const courseCode = (formData.get("courseCode") || "CS-302") as string;
         const assignmentTitle = (formData.get("assignmentTitle") || "Coursework Submission") as string;
         
         const timestamp = Date.now();
-        const submissionId = `sub-${timestamp.toString().slice(-6)}`;
+        const submissionId = `sub-${timestamp.toString().slice(-4)}`;
         const receiptId = `REC-${timestamp.toString().slice(-6)}`;
+
+        // Map assignment ID to D1 schema (asg-501, asg-502, asg-503, asg-504)
+        let resolvedAssignmentId = rawAssignmentId;
+        if (courseCode === "CS-301" || rawAssignmentId.includes("301") || rawAssignmentId.includes("dbms")) {
+          resolvedAssignmentId = "asg-501";
+        } else if (courseCode === "CS-302" || rawAssignmentId.includes("302") || rawAssignmentId.includes("python")) {
+          resolvedAssignmentId = "asg-502";
+        } else if (courseCode === "BCA-301" || rawAssignmentId.includes("bca")) {
+          resolvedAssignmentId = "asg-503";
+        } else if (courseCode === "CS-401" || rawAssignmentId.includes("401")) {
+          resolvedAssignmentId = "asg-504";
+        }
 
         let fileKey = "";
         let originalName = file ? file.name : "submission.pdf";
         let fileSizeStr = file ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` : "0.50 MB";
         let mimeType = file?.type || "application/octet-stream";
 
-        // Upload directly to Cloudflare R2 Storage
+        // Upload directly to Cloudflare R2 Storage (Bucket: assignment-files, Key: submissions/filename)
         if (file && env.STORAGE) {
           const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
           fileKey = `submissions/${safeName}`;
@@ -73,7 +101,7 @@ export async function onRequest(context: { request: Request; env: Env; params: {
               customMetadata: {
                 studentId,
                 studentName,
-                assignmentId,
+                assignmentId: resolvedAssignmentId,
                 submissionId,
                 uploadedAt: new Date().toISOString(),
               }
@@ -83,19 +111,18 @@ export async function onRequest(context: { request: Request; env: Env; params: {
           }
         }
 
-        const r2Url = fileKey ? `${R2_PUBLIC_BASE}/${fileKey}` : `submissions/${assignmentId}/${originalName}`;
+        const r2Url = fileKey ? `${R2_PUBLIC_BASE}/${fileKey}` : `submissions/${resolvedAssignmentId}/${originalName}`;
 
-        // Insert Record into Cloudflare D1 Database
+        // Insert Record into Cloudflare D1 Database (Table: submissions)
         if (env.DB) {
           try {
-            // Check table schema and insert accordingly
             await env.DB.prepare(
               `INSERT OR REPLACE INTO submissions (id, assignment_id, student_id, student_name, file_name, file_url, file_size, status)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
             ).bind(
               submissionId,
-              assignmentId,
-              studentId,
+              resolvedAssignmentId,
+              studentId === "user-stu-1" ? "stu-101" : studentId,
               studentName,
               originalName,
               fileKey || r2Url,
@@ -103,16 +130,15 @@ export async function onRequest(context: { request: Request; env: Env; params: {
               "submitted"
             ).run();
           } catch (dbErr: any) {
-            console.warn("D1 Insert Error (trying fallback column format):", dbErr);
-            // Fallback for older table schema if student_name doesn't exist
+            console.warn("D1 Insert Error (fallback):", dbErr);
             try {
               await env.DB.prepare(
                 `INSERT OR REPLACE INTO submissions (id, assignment_id, student_id, file_url, file_name, file_size, status)
                  VALUES (?, ?, ?, ?, ?, ?, ?)`
               ).bind(
                 submissionId,
-                assignmentId,
-                studentId,
+                resolvedAssignmentId,
+                studentId === "user-stu-1" ? "stu-101" : studentId,
                 fileKey || r2Url,
                 originalName,
                 fileSizeStr,
@@ -145,7 +171,7 @@ export async function onRequest(context: { request: Request; env: Env; params: {
             mimeType,
             uploadTime: new Date().toISOString(),
             user: { id: studentId, name: studentName, email: "sujoydutta830@gmail.com", role: "student" },
-            assignment: { id: assignmentId, title: assignmentTitle, courseCode },
+            assignment: { id: resolvedAssignmentId, title: assignmentTitle, courseCode },
             submission: { id: submissionId, receiptId }
           }
         }, corsHeaders, 201);
@@ -225,27 +251,26 @@ export async function onRequest(context: { request: Request; env: Env; params: {
     if (path === "sync-d1" || path === "sync-all") {
       if (!env.DB) return jsonResponse({ error: "D1 database not connected" }, corsHeaders, 503);
 
-      // Core 4 Assignments to ensure D1 has all of them
       const coreAssignments = [
         {
           id: "asg-501",
           course_code: "CS-301",
           title: "SQL Normalization & BCNF Implementation",
           description: "Design and normalize a university database schema up to BCNF with complex SQL queries and join operations.",
-          due_date: "2026-10-16 05:29:00",
+          due_date: "2026-10-15 23:59:00",
           max_marks: 50,
           created_by: "fac-201",
-          created_at: new Date().toISOString()
+          created_at: "2026-10-05 08:04:00"
         },
         {
           id: "asg-502",
           course_code: "CS-302",
-          title: "Data Analysis Pipeline using Pandas & NumPy",
-          description: "Build a modular Python script to clean, analyze, and visualize institutional grading datasets.",
-          due_date: "2026-10-21 05:29:00",
+          title: "Python Data Analysis Pipeline",
+          description: "Build modular Pandas and NumPy analysis script.",
+          due_date: "2026-10-20 23:59:00",
           max_marks: 40,
           created_by: "fac-201",
-          created_at: new Date().toISOString()
+          created_at: "2026-10-05 08:04:00"
         },
         {
           id: "asg-503",
@@ -255,7 +280,7 @@ export async function onRequest(context: { request: Request; env: Env; params: {
           due_date: "2026-11-04 15:23:00",
           max_marks: 100,
           created_by: "fac-201",
-          created_at: new Date().toISOString()
+          created_at: "2026-10-05 08:04:00"
         },
         {
           id: "asg-504",
@@ -265,7 +290,7 @@ export async function onRequest(context: { request: Request; env: Env; params: {
           due_date: "2026-11-04 15:23:00",
           max_marks: 100,
           created_by: "fac-201",
-          created_at: new Date().toISOString()
+          created_at: "2026-10-05 08:04:00"
         }
       ];
 
