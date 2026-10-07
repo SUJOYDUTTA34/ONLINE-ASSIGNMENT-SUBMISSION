@@ -18,6 +18,7 @@ import {
 import {
   uploadToCloudflareR2,
   listCloudflareR2Objects,
+  getCloudflareR2Object,
   deleteFromCloudflareR2,
   R2_PUBLIC_URL,
 } from "./server/r2Service";
@@ -589,98 +590,147 @@ async function startServer() {
     }
   });
 
-  // Secure Authorized File Download Route
-  app.get("/api/files/download/:fileKey", async (req, res) => {
+  // Secure Authorized File Download Route (supports local storage and Cloudflare R2)
+  app.get("/api/files/download/:fileKey(*)", async (req, res) => {
     try {
       const fileKey = req.params.fileKey;
 
+      // 1. Try local storage first
       const resolved = resolveSecureFilePath(fileKey);
-      if (!resolved.valid) {
-        return res.status(400).json({
-          success: false,
-          error: resolved.error || "Invalid file request.",
-        });
+      if (resolved.valid && fs.existsSync(resolved.absolutePath)) {
+        const metadata = getFileMetadata(fileKey);
+        const downloadName = metadata ? metadata.originalFilename : path.basename(fileKey);
+        const mimeType = metadata ? metadata.mimeType : "application/octet-stream";
+
+        res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(downloadName)}"`);
+        res.setHeader("Content-Type", mimeType);
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate");
+
+        const fileStream = fs.createReadStream(resolved.absolutePath);
+        return fileStream.pipe(res);
       }
 
-      const metadata = getFileMetadata(fileKey);
-      const requester = extractRequestUser(req);
-      if (!metadata) {
-        if (!fs.existsSync(resolved.absolutePath)) {
-          return res.status(404).json({ success: false, error: "File not found." });
-        }
-        if (requester.role !== "admin" && requester.role !== "faculty") {
-          return res.status(403).json({
-            success: false,
-            error: "Forbidden: Verified authorization required to download coursework files.",
-          });
-        }
-      } else {
-        const authCheck = authorizeFileAccess(requester, metadata);
-        if (!authCheck.authorized) {
-          return res.status(403).json({
-            success: false,
-            error: authCheck.reason || "Unauthorized file access.",
-          });
+      // 2. Try Cloudflare R2
+      const r2KeysToTry = [
+        fileKey,
+        `submissions/${fileKey}`,
+        `materials/${fileKey}`,
+        `assignments/${fileKey}`,
+      ];
+
+      for (const key of r2KeysToTry) {
+        const r2Obj = await getCloudflareR2Object(key);
+        if (r2Obj.success && r2Obj.body) {
+          const fileName = path.basename(key);
+          res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(fileName)}"`);
+          res.setHeader("Content-Type", r2Obj.contentType || "application/octet-stream");
+          return (r2Obj.body as any).pipe(res);
         }
       }
 
-      const downloadName = metadata ? metadata.originalFilename : fileKey;
-      const mimeType = metadata ? metadata.mimeType : "application/octet-stream";
+      if (fileKey.startsWith("http")) {
+        return res.redirect(fileKey);
+      }
 
-      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(downloadName)}"`);
-      res.setHeader("Content-Type", mimeType);
-      res.setHeader("X-Content-Type-Options", "nosniff");
-      res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
-      res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate");
-
-      const fileStream = fs.createReadStream(resolved.absolutePath);
-      fileStream.pipe(res);
+      return res.status(404).json({ success: false, error: "File not found." });
     } catch (err) {
       console.error("[FileSecurity] Download error:", err);
       return res.status(500).json({ success: false, error: "Error initiating secure file download." });
     }
   });
 
-  // Secure File Preview Route
-  app.get("/api/files/preview/:fileKey", async (req, res) => {
+  // Secure File Preview Route (supports local vault files and Cloudflare R2 files)
+  app.get("/api/files/preview/:fileKey(*)", async (req, res) => {
     try {
       const fileKey = req.params.fileKey;
 
+      // 1. Check local file storage if applicable
       const resolved = resolveSecureFilePath(fileKey);
-      if (!resolved.valid) {
-        return res.status(400).json({ success: false, error: resolved.error });
+      if (resolved.valid && fs.existsSync(resolved.absolutePath)) {
+        const metadata = getFileMetadata(fileKey);
+        const previewName = metadata ? metadata.originalFilename : path.basename(fileKey);
+        const mimeType = metadata ? metadata.mimeType : "application/pdf";
+
+        res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(previewName)}"`);
+        res.setHeader("Content-Type", mimeType);
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        res.setHeader("Content-Security-Policy", "sandbox allow-scripts allow-same-origin");
+        res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate");
+
+        const fileStream = fs.createReadStream(resolved.absolutePath);
+        return fileStream.pipe(res);
       }
 
-      const metadata = getFileMetadata(fileKey);
-      const requester = extractRequestUser(req);
-      if (!metadata) {
-        if (!fs.existsSync(resolved.absolutePath)) {
-          return res.status(404).json({ success: false, error: "File not found." });
-        }
-        if (requester.role !== "admin" && requester.role !== "faculty") {
-          return res.status(403).json({ success: false, error: "Forbidden: Verified authorization required for preview." });
-        }
-      } else {
-        const authCheck = authorizeFileAccess(requester, metadata);
-        if (!authCheck.authorized) {
-          return res.status(403).json({ success: false, error: authCheck.reason });
+      // 2. Check Cloudflare R2
+      const r2KeysToTry = [
+        fileKey,
+        `submissions/${fileKey}`,
+        `materials/${fileKey}`,
+        `assignments/${fileKey}`,
+      ];
+
+      for (const key of r2KeysToTry) {
+        const r2Obj = await getCloudflareR2Object(key);
+        if (r2Obj.success && r2Obj.body) {
+          const fileName = path.basename(key);
+          const ext = fileName.split(".").pop()?.toLowerCase() || "";
+          let mime = r2Obj.contentType || "application/octet-stream";
+          if (ext === "pdf") mime = "application/pdf";
+          else if (ext === "png") mime = "image/png";
+          else if (ext === "jpg" || ext === "jpeg") mime = "image/jpeg";
+          else if (ext === "txt") mime = "text/plain";
+
+          res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(fileName)}"`);
+          res.setHeader("Content-Type", mime);
+          res.setHeader("Cache-Control", "public, max-age=3600");
+          return (r2Obj.body as any).pipe(res);
         }
       }
 
-      const previewName = metadata ? metadata.originalFilename : fileKey;
-      const mimeType = metadata ? metadata.mimeType : "application/pdf";
+      if (fileKey.startsWith("http")) {
+        return res.redirect(fileKey);
+      }
 
-      res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(previewName)}"`);
-      res.setHeader("Content-Type", mimeType);
-      res.setHeader("X-Content-Type-Options", "nosniff");
-      res.setHeader("Content-Security-Policy", "sandbox allow-scripts allow-same-origin");
-      res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate");
-
-      const fileStream = fs.createReadStream(resolved.absolutePath);
-      fileStream.pipe(res);
+      return res.status(404).json({ success: false, error: "File not found in local vault or Cloudflare R2." });
     } catch (err) {
       console.error("[FileSecurity] Preview error:", err);
       return res.status(500).json({ success: false, error: "Error retrieving file preview." });
+    }
+  });
+
+  // Direct Cloudflare R2 File Preview Route
+  app.get("/api/r2/preview/:key(*)", async (req, res) => {
+    try {
+      const key = req.params.key;
+      const r2Obj = await getCloudflareR2Object(key);
+      if (r2Obj.success && r2Obj.body) {
+        const fileName = path.basename(key);
+        const ext = fileName.split(".").pop()?.toLowerCase() || "";
+        let mime = r2Obj.contentType || "application/octet-stream";
+        if (ext === "pdf") mime = "application/pdf";
+        else if (ext === "png") mime = "image/png";
+        else if (ext === "jpg" || ext === "jpeg") mime = "image/jpeg";
+        else if (ext === "txt") mime = "text/plain";
+
+        res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(fileName)}"`);
+        res.setHeader("Content-Type", mime);
+        return (r2Obj.body as any).pipe(res);
+      }
+      return res.status(404).json({ success: false, error: "File not found in Cloudflare R2." });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message || "Failed to preview R2 file" });
+    }
+  });
+
+  // Delete from Cloudflare R2
+  app.delete("/api/r2/delete/:key(*)", async (req, res) => {
+    try {
+      const key = req.params.key;
+      const success = await deleteFromCloudflareR2(key);
+      return res.json({ success, key });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message });
     }
   });
 

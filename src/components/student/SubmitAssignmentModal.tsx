@@ -186,6 +186,8 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
       let storedFilename = `submission_${assignment.id}_${user.id}_${Date.now()}.${file.name.split('.').pop()}`;
       let serverMetadata: any = null;
       let serverR2Url: string | undefined = undefined;
+      let serverSubmissionId: string | undefined = undefined;
+      let serverReceiptId: string | undefined = undefined;
 
       // Step progress: Validate & Upload to secure server vault & Cloudflare R2
       setUploadProgress(35);
@@ -235,6 +237,12 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
           if (resData.r2Url) {
             serverR2Url = resData.r2Url;
           }
+          if (resData.submissionId) {
+            serverSubmissionId = resData.submissionId;
+          }
+          if (resData.receiptId) {
+            serverReceiptId = resData.receiptId;
+          }
         } else if (!response.ok && contentType.includes('application/json')) {
           const errorData = await response.json().catch(() => ({}));
           console.warn('Server upload message, storing locally:', errorData);
@@ -248,6 +256,8 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
 
       const submission = storage.saveSubmission(
         {
+          id: serverSubmissionId,
+          receiptId: serverReceiptId,
           assignmentId: assignment.id,
           assignmentTitle: assignment.title,
           courseId: assignment.courseId,
@@ -265,7 +275,7 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
           fileType: serverMetadata?.mimeType || file.type || `application/${file.name.split('.').pop()}`,
           fileData: fileDataUrl || undefined,
           comments,
-        },
+        } as any,
         user
       );
 

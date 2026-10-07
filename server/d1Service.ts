@@ -7,17 +7,30 @@ const DATABASE_ID = process.env.CLOUDFLARE_D1_DATABASE_ID || "a71f76cb-8197-4ff4
 const AUTH_EMAIL = process.env.CLOUDFLARE_AUTH_EMAIL || "";
 const AUTH_KEY = process.env.CLOUDFLARE_AUTH_KEY || "";
 
+import { execSync } from "child_process";
+
 function getAuthToken(): string {
-  if (process.env.CLOUDFLARE_API_TOKEN) {
+  if (process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_API_TOKEN.trim()) {
     return process.env.CLOUDFLARE_API_TOKEN.trim();
   }
-  if (process.env.CF_API_TOKEN) {
+  if (process.env.CF_API_TOKEN && process.env.CF_API_TOKEN.trim()) {
     return process.env.CF_API_TOKEN.trim();
   }
   try {
     const tomlPath = path.join(process.env.APPDATA || "", "xdg.config", ".wrangler", "config", "default.toml");
     if (fs.existsSync(tomlPath)) {
-      const content = fs.readFileSync(tomlPath, "utf-8");
+      let content = fs.readFileSync(tomlPath, "utf-8");
+      const expMatch = content.match(/expiration_time\s*=\s*"([^"]+)"/);
+      // Auto-refresh token if within 3 minutes of expiry
+      if (expMatch && expMatch[1]) {
+        const expiresAt = new Date(expMatch[1]).getTime();
+        if (expiresAt - Date.now() < 3 * 60 * 1000) {
+          try {
+            execSync("npx wrangler whoami", { stdio: "ignore" });
+            content = fs.readFileSync(tomlPath, "utf-8");
+          } catch (_) {}
+        }
+      }
       const match = content.match(/oauth_token\s*=\s*"([^"]+)"/);
       if (match && match[1]) {
         return match[1].trim();
@@ -64,7 +77,7 @@ function saveLocalCache(data: { assignments: any[]; submissions: any[]; material
  * POST https://api.cloudflare.com/client/v4/accounts/{account_id}/d1/database/{database_id}/query
  */
 export async function executeD1Query<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
-  const token = getAuthToken();
+  let token = getAuthToken();
   if (!token && !(AUTH_EMAIL && AUTH_KEY)) {
     return {
       success: false,
@@ -87,11 +100,27 @@ export async function executeD1Query<T = any>(sql: string, params: any[] = []): 
   }
 
   try {
-    const res = await fetch(endpoint, {
+    let res = await fetch(endpoint, {
       method: "POST",
       headers,
       body: JSON.stringify({ sql, params }),
     });
+
+    // If 401 Unauthorized, refresh Wrangler token and retry once
+    if (res.status === 401) {
+      try {
+        execSync("npx wrangler whoami", { stdio: "ignore" });
+        const refreshedToken = getAuthToken();
+        if (refreshedToken && refreshedToken !== token) {
+          headers["Authorization"] = `Bearer ${refreshedToken}`;
+          res = await fetch(endpoint, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ sql, params }),
+          });
+        }
+      } catch (_) {}
+    }
 
     const data = await res.json() as any;
 
@@ -120,10 +149,49 @@ export async function executeD1Query<T = any>(sql: string, params: any[] = []): 
 }
 
 /**
- * Initialize all required tables in Cloudflare D1 database (assignments, submissions, course_materials)
+ * Initialize all required tables in Cloudflare D1 database (assignments, submissions, course_materials, courses, users)
  */
 export async function initD1Tables(): Promise<{ success: boolean; initialized: boolean; message: string }> {
   const schemaSQL = `
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      role TEXT DEFAULT 'student',
+      department TEXT,
+      student_id_number TEXT,
+      avatar_url TEXT,
+      cover_url TEXT,
+      phone TEXT,
+      department_id TEXT,
+      department_name TEXT,
+      designation TEXT,
+      program TEXT,
+      semester INTEGER,
+      institution TEXT,
+      status TEXT DEFAULT 'active',
+      bio TEXT,
+      employee_id_number TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS courses (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL,
+      title TEXT NOT NULL,
+      department_id TEXT,
+      department_name TEXT,
+      semester INTEGER DEFAULT 1,
+      academic_year TEXT,
+      faculty_id TEXT,
+      faculty_name TEXT,
+      description TEXT,
+      credits INTEGER DEFAULT 4,
+      status TEXT DEFAULT 'active',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS assignments (
       id TEXT PRIMARY KEY,
       course_code TEXT,
@@ -200,6 +268,74 @@ export async function initD1Tables(): Promise<{ success: boolean; initialized: b
     }
   }
 
+  // Ensure initial core assignments are seeded in D1
+  try {
+    const countRes = await executeD1Query("SELECT COUNT(*) as count FROM assignments");
+    const count = countRes.results?.[0]?.count ?? 0;
+    if (count === 0) {
+      const coreAssignments = [
+        {
+          id: "asg-501",
+          course_code: "CS-301",
+          course_name: "Database Management Systems",
+          title: "SQL Normalization & BCNF Implementation",
+          description: "Design and normalize a university database schema up to BCNF with complex SQL queries and join operations.",
+          instructions: "Implement normalization up to 3NF/BCNF. Upload your .sql file or PDF report.",
+          due_date: "2026-10-15 23:59:00",
+          max_marks: 50,
+          created_by: "fac-201",
+          created_by_name: "Dr. Arvind Rao",
+          created_at: "2026-10-05 08:04:00",
+        },
+        {
+          id: "asg-502",
+          course_code: "CS-302",
+          course_name: "Python Programming Lab",
+          title: "Python Data Analysis Pipeline",
+          description: "Build modular Pandas and NumPy analysis script with complete unit test suites.",
+          instructions: "Deliver clean Python script (.py) or Jupyter notebook with charts.",
+          due_date: "2026-10-20 23:59:00",
+          max_marks: 40,
+          created_by: "fac-201",
+          created_by_name: "Dr. Arvind Rao",
+          created_at: "2026-10-05 08:04:00",
+        },
+        {
+          id: "asg-503",
+          course_code: "BCA-301",
+          course_name: "Numerical Methods",
+          title: "BCA-301 — Coursework & Assignment Submission",
+          description: "Submit assignments, project files, exercises or reports for Numerical Methods.",
+          instructions: "Upload assignment solution PDF or code archive.",
+          due_date: "2026-11-04 15:23:00",
+          max_marks: 100,
+          created_by: "fac-201",
+          created_by_name: "Dr. Arvind Rao",
+          created_at: "2026-10-05 08:04:00",
+        },
+        {
+          id: "asg-504",
+          course_code: "CS-401",
+          course_name: "Microprocessor & Microcontroller",
+          title: "CS-401 — Coursework & Assignment Submission",
+          description: "Submit assignments, project files, exercises or reports for Microprocessor Microcontroller.",
+          instructions: "Upload assembly/C code and simulation circuit schematics.",
+          due_date: "2026-11-04 15:23:00",
+          max_marks: 100,
+          created_by: "fac-201",
+          created_by_name: "Dr. Arvind Rao",
+          created_at: "2026-10-05 08:04:00",
+        },
+      ];
+      for (const asg of coreAssignments) {
+        await saveD1Assignment(asg);
+      }
+      console.log("[Cloudflare D1] Core assignments seeded to D1 database.");
+    }
+  } catch (seedErr) {
+    console.warn("[Cloudflare D1] Assignment seed notice:", seedErr);
+  }
+
   if (anyCFSuccess) {
     console.log("[Cloudflare D1] Database schema tables verified on Cloudflare D1.");
     return { success: true, initialized: true, message: "Tables initialized on Cloudflare D1." };
@@ -208,6 +344,7 @@ export async function initD1Tables(): Promise<{ success: boolean; initialized: b
     return { success: true, initialized: false, message: "Local schema active. Provide CLOUDFLARE_API_TOKEN to sync live with Cloudflare D1." };
   }
 }
+
 
 /**
  * Get all assignments
@@ -723,10 +860,13 @@ export async function saveD1User(user: any): Promise<{ success: boolean; id: str
 }
 
 /**
- * Delete a user from D1
+ * Delete a user from D1 (and any submissions linked to that student)
  */
 export async function deleteD1User(id: string): Promise<{ success: boolean }> {
-  await executeD1Query("DELETE FROM users WHERE id = ?", [id]);
+  // Delete from users table by ID or email
+  await executeD1Query("DELETE FROM users WHERE id = ? OR email = ?", [id, id]);
+  // Also clean up student's submissions from D1
+  await executeD1Query("DELETE FROM submissions WHERE student_id = ? OR student_email = ?", [id, id]);
   return { success: true };
 }
 

@@ -316,6 +316,144 @@ export const storage = {
     return undefined;
   },
 
+  syncUsersFromD1(d1Users: any[]): User[] {
+    if (!Array.isArray(d1Users)) return getItem<User[]>(KEYS.USERS, INITIAL_USERS);
+    const currentUsers = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
+    const d1IdSet = new Set(d1Users.map((u) => u.id));
+    const d1EmailSet = new Set(d1Users.map((u) => (u.email || "").toLowerCase()));
+
+    const merged = [...currentUsers];
+    for (const d1User of d1Users) {
+      const idx = merged.findIndex(
+        (u) => u.id === d1User.id || (u.email && u.email.toLowerCase() === (d1User.email || "").toLowerCase())
+      );
+      const formatted: User = {
+        id: d1User.id,
+        name: d1User.name || "User",
+        email: d1User.email || "",
+        role: d1User.role || "student",
+        departmentId: d1User.department_id || d1User.departmentId || "dept-1",
+        departmentName: d1User.department_name || d1User.departmentName || d1User.department || "Computer Science",
+        studentIdNumber: d1User.student_id_number || d1User.studentIdNumber,
+        employeeIdNumber: d1User.employee_id_number || d1User.employeeIdNumber,
+        avatarUrl:
+          d1User.avatar_url ||
+          d1User.avatarUrl ||
+          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80",
+        coverUrl: d1User.cover_url || d1User.coverUrl,
+        phone: d1User.phone || "",
+        status: d1User.status || "active",
+        semester: d1User.semester ? Number(d1User.semester) : 1,
+        program: d1User.program || (d1User.role === "student" ? "Computer Science" : "Faculty"),
+        institution: d1User.institution || "Midnapore College Autonomous",
+        bio: d1User.bio || "",
+        createdAt: d1User.created_at || d1User.createdAt || new Date().toISOString(),
+      };
+
+      if (idx >= 0) {
+        merged[idx] = { ...merged[idx], ...formatted };
+      } else {
+        merged.push(formatted);
+      }
+    }
+
+    // Keep all faculty/admin, but prune students that were explicitly deleted from D1
+    const filtered = merged.filter((u) => {
+      if (u.role !== "student") return true;
+      return d1IdSet.has(u.id) || d1EmailSet.has((u.email || "").toLowerCase());
+    });
+
+    setItem(KEYS.USERS, filtered);
+    return filtered;
+  },
+
+  async syncWithD1(): Promise<void> {
+    try {
+      const [usersRes, subsRes, asgsRes] = await Promise.all([
+        fetch("/api/users").then((r) => r.json()).catch(() => null),
+        fetch("/api/submissions").then((r) => r.json()).catch(() => null),
+        fetch("/api/assignments").then((r) => r.json()).catch(() => null),
+      ]);
+
+      if (usersRes?.success && Array.isArray(usersRes.users)) {
+        this.syncUsersFromD1(usersRes.users);
+      }
+
+      if (subsRes?.success && Array.isArray(subsRes.submissions)) {
+        const localSubs = getItem<Submission[]>(KEYS.SUBMISSIONS, []);
+        const mergedSubs = [...localSubs];
+        for (const s of subsRes.submissions) {
+          const idx = mergedSubs.findIndex((ls) => ls.id === s.id);
+          const mappedSub: Submission = {
+            id: s.id,
+            assignmentId: s.assignment_id,
+            assignmentTitle: s.assignment_title || "Coursework Submission",
+            courseId: s.course_id || "",
+            courseCode: s.course_code || "CS-301",
+            courseName: s.course_name || "Database Systems",
+            studentId: s.student_id,
+            studentName: s.student_name,
+            studentIdNumber: s.student_id_number,
+            fileName: s.file_name,
+            fileKey: s.file_key,
+            storedFileName: s.file_key,
+            r2Url: s.file_url,
+            fileSize: s.file_size,
+            fileType: s.mime_type,
+            status: s.status || "submitted",
+            version: s.version || 1,
+            receiptId: s.receipt_id,
+            submittedAt: s.submitted_at,
+            gradeScore: s.grade_score,
+            gradeFeedback: s.grade_feedback,
+            gradedBy: s.graded_by,
+            gradedAt: s.graded_at,
+          };
+          if (idx >= 0) mergedSubs[idx] = { ...mergedSubs[idx], ...mappedSub };
+          else mergedSubs.unshift(mappedSub);
+        }
+        setItem(KEYS.SUBMISSIONS, mergedSubs);
+      }
+
+      if (asgsRes?.success && Array.isArray(asgsRes.assignments)) {
+        const localAsgs = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
+        const mergedAsgs = [...localAsgs];
+        for (const a of asgsRes.assignments) {
+          const idx = mergedAsgs.findIndex((la) => la.id === a.id);
+          const mappedAsg: Assignment = {
+            id: a.id,
+            courseId: a.course_id || "course-1",
+            courseCode: a.course_code || "CS-301",
+            courseName: a.course_name || "General Course",
+            title: a.title,
+            description: a.description,
+            instructions: a.instructions,
+            dueAt: a.due_date,
+            maxMarks: a.max_marks || 100,
+            facultyId: a.created_by,
+            facultyName: a.created_by_name,
+            createdAt: a.created_at,
+            status: a.status || "published",
+            allowedFileTypes: a.allowed_file_types ? a.allowed_file_types.split(",") : ["all"],
+            maxFileSizeMb: a.max_file_size_mb || 100,
+            allowLateSubmission: !!a.allow_late_submission,
+            latePenaltyPercentPerDay: a.late_penalty_percent_per_day || 5,
+            allowResubmission: !!a.allow_resubmission,
+            maxResubmissions: a.max_resubmissions || 3,
+            fileUrl: a.file_url,
+            fileName: a.file_name,
+            resources: [],
+          };
+          if (idx >= 0) mergedAsgs[idx] = { ...mergedAsgs[idx], ...mappedAsg };
+          else mergedAsgs.push(mappedAsg);
+        }
+        setItem(KEYS.ASSIGNMENTS, mergedAsgs);
+      }
+    } catch (e) {
+      console.warn("[Cloudflare D1 Real-time Sync Notice]:", e);
+    }
+  },
+
   /**
    * Secure Credential Verification (Zero Password Exposure)
    */
@@ -1417,8 +1555,8 @@ export const storage = {
     }
 
     const newVersion = existing.length + 1;
-    const submissionId = `sub-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    const receiptId = `REC-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+    const submissionId = (submissionData as any).id || (submissionData as any).submissionId || `sub-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const receiptId = (submissionData as any).receiptId || `REC-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
 
     const newSubmission: Submission = {
       ...submissionData,

@@ -63,6 +63,19 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Live real-time sync with Cloudflare D1 on mount
+  React.useEffect(() => {
+    fetch('/api/users')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.users)) {
+          storage.syncUsersFromD1(data.users);
+          setUsers(storage.getUsers(currentUser));
+        }
+      })
+      .catch((e) => console.warn('D1 live users fetch notice:', e));
+  }, []);
+
   // React to prop change
   React.useEffect(() => {
     if (isAddModalOpen) {
@@ -138,7 +151,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         showToast({
           type: 'success',
           title: 'User Updated',
-          message: `Profile for ${updatedUser.name} has been updated.`,
+          message: `Profile for ${updatedUser.name} has been updated in Cloudflare D1 & system.`,
         });
       } else {
         updatedUser = storage.createUser(
@@ -152,8 +165,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         setUsers([...users, updatedUser]);
         showToast({
           type: 'success',
-          title: 'User Created',
-          message: `New account provisioned for ${updatedUser.name} (${updatedUser.role}).`,
+          title: 'User Created & Synced to D1',
+          message: `New account provisioned for ${updatedUser.name} (${updatedUser.role}) in Cloudflare D1.`,
         });
       }
 
@@ -165,14 +178,25 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     }
   };
 
-  const handleDeleteUser = (id: string, userName: string) => {
-    storage.deleteUser(id, currentUser || undefined);
-    setUsers(users.filter((u) => u.id !== id));
-    showToast({
-      type: 'success',
-      title: 'User Removed',
-      message: `Account for ${userName} has been removed.`,
-    });
+  const handleDeleteUser = async (id: string, userName: string) => {
+    try {
+      // 1. Immediately delete from Cloudflare D1 database
+      await fetch(`/api/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      // 2. Remove from local store and sync
+      storage.deleteUser(id, currentUser || undefined);
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      showToast({
+        type: 'success',
+        title: 'Student Removed from D1 & System',
+        message: `Account for ${userName} (${id}) has been removed from Cloudflare D1 and institutional records.`,
+      });
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Delete Failed',
+        message: err?.message || 'Failed to remove user',
+      });
+    }
   };
 
   const handleToggleStatus = (target: User) => {

@@ -90,6 +90,37 @@ export async function listCloudflareR2Objects(prefix: string = ""): Promise<any[
 }
 
 /**
+ * Retrieves an object from Cloudflare R2 bucket for streaming / preview
+ */
+export async function getCloudflareR2Object(key: string): Promise<{
+  success: boolean;
+  body?: any;
+  contentType?: string;
+  contentLength?: number;
+  error?: string;
+}> {
+  try {
+    const cleanKey = key.replace(/^\/+/, "");
+    const command = new GetObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: cleanKey,
+    });
+    const response = await r2Client.send(command);
+    return {
+      success: true,
+      body: response.Body,
+      contentType: response.ContentType,
+      contentLength: response.ContentLength,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || "Object not found in Cloudflare R2",
+    };
+  }
+}
+
+/**
  * Deletes an object from Cloudflare R2 bucket
  */
 export async function deleteFromCloudflareR2(key: string): Promise<boolean> {
@@ -108,3 +139,4 @@ export async function deleteFromCloudflareR2(key: string): Promise<boolean> {
 }
 
 export { R2_PUBLIC_URL, R2_BUCKET_NAME };
+

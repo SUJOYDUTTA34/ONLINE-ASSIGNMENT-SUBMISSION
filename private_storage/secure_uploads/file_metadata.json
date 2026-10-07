@@ -238,5 +238,65 @@
       "receiptId": "REC-MUV6ZKD1",
       "version": 1
     }
+  },
+  {
+    "id": "meta_80d087d5-8262-4fb3-a69d-1e70f3b6f508",
+    "fileKey": "secfile_e9a8f176-1449-4849-92e3-744ef4be0877_02c4c67bcfb2.pdf",
+    "originalFilename": "Rohit_BCNF_Assignment.pdf",
+    "fileSize": 312,
+    "fileSizeFormatted": "0 KB",
+    "mimeType": "application/pdf",
+    "extension": "pdf",
+    "sha256Hash": "e020199b33939076e2fbc75f5affef51a93994228f1549ffcffcbfaf4a92eb3b",
+    "uploadTime": "2026-10-07T13:07:32.548Z",
+    "user": {
+      "id": "stu-test-1791378451801",
+      "name": "Rohit Banerjee",
+      "email": "test_1791378451801@example.com",
+      "role": "student",
+      "studentIdNumber": "CS-2026-9999"
+    },
+    "assignment": {
+      "id": "asg-501",
+      "title": "SQL Normalization & BCNF Implementation",
+      "courseId": "",
+      "courseCode": "CS-301",
+      "courseName": "Database Management Systems"
+    },
+    "submission": {
+      "id": "sub-452545",
+      "receiptId": "REC-MUY4H8AP",
+      "version": 1
+    }
+  },
+  {
+    "id": "meta_2caf1122-54d3-4c0b-8347-2d867ca7d751",
+    "fileKey": "secfile_6a437cd4-7dc1-4335-94cd-29e9c8d881ef_91c7826e2864.pdf",
+    "originalFilename": "Rohit_BCNF_Assignment.pdf",
+    "fileSize": 312,
+    "fileSizeFormatted": "0 KB",
+    "mimeType": "application/pdf",
+    "extension": "pdf",
+    "sha256Hash": "e020199b33939076e2fbc75f5affef51a93994228f1549ffcffcbfaf4a92eb3b",
+    "uploadTime": "2026-10-07T17:27:01.486Z",
+    "user": {
+      "id": "stu-test-1791394020511",
+      "name": "Rohit Banerjee",
+      "email": "test_1791394020511@example.com",
+      "role": "student",
+      "studentIdNumber": "CS-2026-9999"
+    },
+    "assignment": {
+      "id": "asg-501",
+      "title": "SQL Normalization & BCNF Implementation",
+      "courseId": "",
+      "courseCode": "CS-301",
+      "courseName": "Database Management Systems"
+    },
+    "submission": {
+      "id": "sub-021466",
+      "receiptId": "REC-MUYDQXCQ",
+      "version": 1
+    }
   }
 ]
