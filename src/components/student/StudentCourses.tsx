@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../context/NotificationContext';
 import { storage } from '../../services/storage';
+import { playAudioEffect } from '../../lib/audio';
 import { Course, Assignment } from '../../types';
 import { UploadDocumentModal } from '../common/UploadDocumentModal';
 import { AddCourseModal } from '../common/AddCourseModal';
@@ -35,12 +37,15 @@ export const StudentCourses: React.FC<StudentCoursesProps> = ({
   onOpenSubmitModal,
 }) => {
   const { user } = useAuth();
+  const { showToast } = useNotifications();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
   const [selectedCourseForModal, setSelectedCourseForModal] = useState<Course | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAddCourseModalOpen, setIsAddCourseModalOpen] = useState(false);
   const [uploadCourseTargetId, setUploadCourseTargetId] = useState<string>('');
+  const [courseToDelete, setCourseToDelete] = useState<{ id: string; code: string; title: string } | null>(null);
+  const [isDeletingCourse, setIsDeletingCourse] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Live real-time sync with Cloudflare D1
@@ -57,8 +62,9 @@ export const StudentCourses: React.FC<StudentCoursesProps> = ({
   const allSubmissions = storage.getSubmissions().filter((s) => s.studentId === user.id);
   const departments = storage.getDepartments();
 
-  // All academic courses available in the curriculum for students
-  const studentCourses = allCourses;
+  // All academic courses available in the curriculum for students (excluding deleted)
+  const deletedCourseIds = new Set(storage.getDeletedCourseIds());
+  const studentCourses = allCourses.filter((c) => !deletedCourseIds.has(c.id));
 
   // Filtered courses
   const filteredCourses = studentCourses.filter((course) => {
@@ -95,14 +101,27 @@ export const StudentCourses: React.FC<StudentCoursesProps> = ({
     link.click();
   };
 
-  const handleDeleteCourse = (courseId: string, courseCode: string) => {
-    if (window.confirm(`Are you sure you want to delete or unenroll from course ${courseCode}?`)) {
-      try {
-        storage.deleteCourse(courseId, user);
-        setRefreshTrigger((prev) => prev + 1);
-      } catch (err: any) {
-        alert(err.message || 'Failed to delete course.');
-      }
+  const confirmDeleteCourse = async () => {
+    if (!courseToDelete) return;
+    setIsDeletingCourse(true);
+    try {
+      storage.deleteCourse(courseToDelete.id, user);
+      playAudioEffect('warning');
+      showToast({
+        type: 'success',
+        title: 'Course Removed',
+        message: `Course ${courseToDelete.code} has been successfully deleted.`,
+      });
+      setCourseToDelete(null);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Deletion Failed',
+        message: err.message || 'Failed to delete course.',
+      });
+    } finally {
+      setIsDeletingCourse(false);
     }
   };
 
@@ -278,20 +297,28 @@ export const StudentCourses: React.FC<StudentCoursesProps> = ({
 
                 {/* Card Footer Actions */}
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <button
                       id={`view-syllabus-btn-${course.id}`}
                       onClick={() => setSelectedCourseForModal(course)}
-                      className="text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                      className="text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer border border-slate-200/80 dark:border-slate-700/80"
                     >
-                      <BookOpen className="w-3.5 h-3.5" /> Syllabus
+                      <BookOpen className="w-3.5 h-3.5 text-blue-500" /> Syllabus
                     </button>
                     <button
-                      onClick={() => handleDeleteCourse(course.id, course.code || course.courseCode || 'Course')}
-                      className="text-xs font-medium text-slate-400 hover:text-rose-500 flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                      id={`delete-course-btn-${course.id}`}
+                      onClick={() =>
+                        setCourseToDelete({
+                          id: course.id,
+                          code: course.code || course.courseCode || 'Course',
+                          title: course.title || course.courseName || '',
+                        })
+                      }
+                      className="text-xs font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer border border-rose-200 dark:border-rose-900/60"
                       title="Delete / Unenroll Course"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                      <span>Delete</span>
                     </button>
                   </div>
 
@@ -520,6 +547,80 @@ export const StudentCourses: React.FC<StudentCoursesProps> = ({
           setRefreshTrigger(prev => prev + 1);
         }}
       />
+
+      {/* Delete Course Confirmation Modal */}
+      {courseToDelete && (
+        <div
+          id="delete-course-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => {
+            if (!isDeletingCourse) setCourseToDelete(null);
+          }}
+        >
+          <div
+            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all p-6 space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/50 flex items-center justify-center shrink-0 text-rose-600 dark:text-rose-400">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Delete Course?
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Are you sure you want to delete and unenroll from{' '}
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {courseToDelete.code}
+                  </span>
+                  {courseToDelete.title ? ` (${courseToDelete.title})` : ''}?
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 text-xs leading-relaxed space-y-1">
+              <p className="font-semibold flex items-center gap-1.5">
+                <span>⚠️</span> Warning: Permanent Action
+              </p>
+              <p className="text-[11px] opacity-90">
+                This course and any associated local coursework links will be removed from your catalog. You can always re-add it anytime using "Add New Course".
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                id="cancel-delete-course-btn"
+                type="button"
+                disabled={isDeletingCourse}
+                onClick={() => setCourseToDelete(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                id="confirm-delete-course-btn"
+                type="button"
+                disabled={isDeletingCourse}
+                onClick={confirmDeleteCourse}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 active:scale-95 transition-all flex items-center gap-2 shadow-lg shadow-rose-600/20 disabled:opacity-50 cursor-pointer"
+              >
+                {isDeletingCourse ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Yes, Delete Course</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

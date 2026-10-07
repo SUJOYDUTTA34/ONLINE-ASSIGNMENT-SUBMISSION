@@ -95,12 +95,20 @@ export const storage = {
   init() {
     getItem(KEYS.USERS, INITIAL_USERS);
     getItem(KEYS.DEPARTMENTS, INITIAL_DEPARTMENTS);
-    setItem(KEYS.COURSES, INITIAL_COURSES);
-    setItem(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
+    getItem(KEYS.COURSES, INITIAL_COURSES);
+    getItem(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
     getItem(KEYS.SUBMISSIONS, []);
     getItem(KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS);
     getItem(KEYS.AUDIT_LOGS, INITIAL_AUDIT_LOGS);
     getItem(KEYS.EMAIL_TEMPLATES, INITIAL_EMAIL_TEMPLATES);
+
+    // Filter out any courses marked as deleted by the user
+    const deletedCourseIds = getItem<string[]>('oass_deleted_course_ids', []);
+    if (deletedCourseIds.length > 0) {
+      const currentCourses = getItem<Course[]>(KEYS.COURSES, INITIAL_COURSES);
+      const filtered = currentCourses.filter((c) => !deletedCourseIds.includes(c.id));
+      setItem(KEYS.COURSES, filtered);
+    }
 
     // Clean up old mock demo submissions so student starts with clean real-time history
     const storedSubs = getItem<Submission[]>(KEYS.SUBMISSIONS, []);
@@ -381,9 +389,11 @@ export const storage = {
       }
 
       if (coursesRes?.success && Array.isArray(coursesRes.courses)) {
-        const localCourses = getItem<Course[]>(KEYS.COURSES, INITIAL_COURSES);
+        const deletedIds = getItem<string[]>('oass_deleted_course_ids', []);
+        const localCourses = getItem<Course[]>(KEYS.COURSES, INITIAL_COURSES).filter((c) => !deletedIds.includes(c.id));
         const mergedCourses = [...localCourses];
         for (const c of coursesRes.courses) {
+          if (deletedIds.includes(c.id)) continue;
           const idx = mergedCourses.findIndex((lc) => lc.id === c.id || (lc.code && c.code && lc.code.toUpperCase() === c.code.toUpperCase()));
           const mappedCourse: Course = {
             id: c.id,
@@ -455,9 +465,11 @@ export const storage = {
       }
 
       if (asgsRes?.success && Array.isArray(asgsRes.assignments)) {
-        const localAsgs = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
+        const deletedAsgIds = getItem<string[]>('oass_deleted_assignment_ids', []);
+        const localAsgs = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS).filter((a) => !deletedAsgIds.includes(a.id));
         const mergedAsgs = [...localAsgs];
         for (const a of asgsRes.assignments) {
+          if (deletedAsgIds.includes(a.id)) continue;
           const idx = mergedAsgs.findIndex((la) => la.id === a.id);
           const mappedAsg: Assignment = {
             id: a.id,
@@ -975,13 +987,16 @@ export const storage = {
   // Courses
   getCourses(): Course[] {
     const list = getItem<Course[]>(KEYS.COURSES, INITIAL_COURSES);
-    return list.map((c) => ({
-      ...c,
-      code: c.code || c.courseCode,
-      title: c.title || c.courseName,
-      facultyId: c.facultyId || (c.facultyIds && c.facultyIds[0]) || '',
-      facultyName: c.facultyName || (c.facultyNames && c.facultyNames[0]) || '',
-    }));
+    const deletedIds = getItem<string[]>('oass_deleted_course_ids', []);
+    return list
+      .filter((c) => !deletedIds.includes(c.id))
+      .map((c) => ({
+        ...c,
+        code: c.code || c.courseCode,
+        title: c.title || c.courseName,
+        facultyId: c.facultyId || (c.facultyIds && c.facultyIds[0]) || '',
+        facultyName: c.facultyName || (c.facultyNames && c.facultyNames[0]) || '',
+      }));
   },
 
   getCourseById(id: string): Course | undefined {
@@ -1191,6 +1206,13 @@ export const storage = {
     const courses = this.getCourses().filter((c) => c.id !== id);
     setItem(KEYS.COURSES, courses);
 
+    // Persist to deletedCourseIds so background sync does not resurrect it
+    const deletedIds = getItem<string[]>('oass_deleted_course_ids', []);
+    if (!deletedIds.includes(id)) {
+      deletedIds.push(id);
+      setItem('oass_deleted_course_ids', deletedIds);
+    }
+
     // Sync course deletion with Cloudflare D1
     fetch(`/api/courses/${encodeURIComponent(id)}`, {
       method: 'DELETE',
@@ -1236,6 +1258,10 @@ export const storage = {
     return true;
   },
 
+  getDeletedCourseIds(): string[] {
+    return getItem<string[]>('oass_deleted_course_ids', []);
+  },
+
   addCourseDocument(courseId: string, document: any, user?: User): Course {
     const activeUser = user || this.getCurrentUser();
     const course = this.getCourseById(courseId);
@@ -1259,7 +1285,8 @@ export const storage = {
   // Assignments (Role-based Filtering & Publication Guard)
   getAssignments(requester?: User): Assignment[] {
     const active = requester || this.getCurrentUser();
-    let all = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
+    const deletedAsgIds = new Set(this.getDeletedAssignmentIds());
+    let all = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS).filter((a) => !deletedAsgIds.has(a.id));
     if (!active) return [];
 
     // Auto-heal/ensure all catalog courses have at least 1 assignment slot
@@ -1268,11 +1295,12 @@ export const storage = {
     let modified = false;
 
     courses.forEach((c) => {
-      if (!existingCourseIds.has(c.id)) {
+      const autoId = `asg-auto-${c.id}`;
+      if (!existingCourseIds.has(c.id) && !deletedAsgIds.has(autoId)) {
         const defaultDueDate = new Date();
         defaultDueDate.setDate(defaultDueDate.getDate() + 30);
         const autoAsg: Assignment = {
-          id: `asg-auto-${c.id}`,
+          id: autoId,
           courseId: c.id,
           courseCode: c.code || c.courseCode || 'COURSE',
           courseName: c.title || c.courseName || 'Coursework',
@@ -1447,32 +1475,38 @@ export const storage = {
 
   deleteAssignment(id: string, user?: User): boolean {
     const resolvedUser = user || this.getCurrentUser();
-    if (!resolvedUser || (resolvedUser.role !== 'admin' && resolvedUser.role !== 'faculty')) {
-      throw new Error('Unauthorized: Only faculty instructors and administrators can delete assignments.');
+    if (!resolvedUser) {
+      throw new Error('Unauthorized: Authentication required.');
     }
 
-    const assignment = this.getAssignmentById(id, resolvedUser);
-    if (!assignment) {
-      throw new Error('Assignment not found or unauthorized.');
-    }
+    const assignment = this.getAssignments(resolvedUser).find((a) => a.id === id);
 
     const assignments = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS).filter((a) => a.id !== id);
     setItem(KEYS.ASSIGNMENTS, assignments);
+
+    // Persist to deleted assignment IDs so background D1 sync does not resurrect it
+    const deletedIds = getItem<string[]>('oass_deleted_assignment_ids', []);
+    if (!deletedIds.includes(id)) {
+      deletedIds.push(id);
+      setItem('oass_deleted_assignment_ids', deletedIds);
+    }
 
     // Cascade delete submissions for this assignment
     const submissions = getItem<Submission[]>(KEYS.SUBMISSIONS, INITIAL_SUBMISSIONS).filter((s) => s.assignmentId !== id);
     setItem(KEYS.SUBMISSIONS, submissions);
 
-    this.addAuditLog({
-      userId: resolvedUser.id,
-      userName: resolvedUser.name,
-      userRole: resolvedUser.role,
-      action: 'ASSIGNMENT_DELETED',
-      entityType: 'Assignment',
-      entityId: id,
-      details: `Deleted assignment "${assignment.title}"`,
-      ipAddress: '127.0.0.1',
-    });
+    if (assignment) {
+      this.addAuditLog({
+        userId: resolvedUser.id,
+        userName: resolvedUser.name,
+        userRole: resolvedUser.role,
+        action: 'ASSIGNMENT_DELETED',
+        entityType: 'Assignment',
+        entityId: id,
+        details: `Deleted assignment "${assignment.title}"`,
+        ipAddress: '127.0.0.1',
+      });
+    }
 
     // Sync deletion with Cloudflare D1 database
     fetch(`/api/assignments/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch((e) => {
@@ -1480,6 +1514,10 @@ export const storage = {
     });
 
     return true;
+  },
+
+  getDeletedAssignmentIds(): string[] {
+    return getItem<string[]>('oass_deleted_assignment_ids', []);
   },
 
   // Submissions (Authorized & Ownership Enforcement to eliminate IDOR)

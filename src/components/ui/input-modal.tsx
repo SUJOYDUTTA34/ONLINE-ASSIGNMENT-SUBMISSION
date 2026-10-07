@@ -178,6 +178,9 @@ export function InputModal({
   };
 
   if (!isOpen) {
+    if (controlledIsOpen !== undefined) {
+      return null;
+    }
     return (
       <div className="flex items-center justify-center p-4">
         <Button onClick={handleOpen}>Open Audio Show Creator</Button>
@@ -186,8 +189,9 @@ export function InputModal({
   }
 
   return (
-    <div className="flex items-center justify-center p-4">
-      <Card className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+      <div className="fixed inset-0" onClick={handleClose} aria-hidden="true" />
+      <Card className="relative z-10 w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950">
         <CardContent className="p-4 sm:p-6 lg:p-8 h-full overflow-y-auto">
           <div className="flex items-start justify-between mb-6">
             <div className="flex gap-3 sm:gap-4 flex-1">

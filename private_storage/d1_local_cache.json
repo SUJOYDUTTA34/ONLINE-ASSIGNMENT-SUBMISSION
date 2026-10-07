@@ -23,28 +23,6 @@
       "file_name": ""
     },
     {
-      "id": "asg-503",
-      "course_code": "BCA-301",
-      "course_name": "Numerical Methods",
-      "title": "BCA-301 — Coursework & Assignment Submission",
-      "description": "Submit assignments, project files, exercises or reports for Numerical Methods.",
-      "instructions": "Upload assignment solution PDF or code archive.",
-      "due_date": "2026-11-04 15:23:00",
-      "max_marks": 100,
-      "created_by": "fac-201",
-      "created_by_name": "Dr. Arvind Rao",
-      "created_at": "2026-10-05 08:04:00",
-      "status": "published",
-      "allowed_file_types": "pdf,docx,zip",
-      "max_file_size_mb": 100,
-      "allow_late_submission": 0,
-      "late_penalty_percent_per_day": 5,
-      "allow_resubmission": 0,
-      "max_resubmissions": 3,
-      "file_url": "",
-      "file_name": ""
-    },
-    {
       "id": "asg-502",
       "course_code": "CS-302",
       "course_name": "Python Programming Lab",

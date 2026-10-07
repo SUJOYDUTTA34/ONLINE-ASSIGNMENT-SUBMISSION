@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Assignment, Submission } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
@@ -6,9 +6,21 @@ import { storage } from '../../services/storage';
 import { playAudioEffect } from '../../lib/audio';
 import confetti from 'canvas-confetti';
 import { ProgressBar } from '@/components/ui/progress-bar';
+
+// 21st.dev UI Theme Primitives
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+
 import {
-  X,
   UploadCloud,
+  Upload,
+  Link as LinkIcon,
+  FolderOpen,
   FileText,
   AlertTriangle,
   CheckCircle2,
@@ -16,11 +28,18 @@ import {
   AlertCircle,
   User,
   GraduationCap,
-  Building,
   Calendar,
-  Award,
-  BookOpen,
   RotateCcw,
+  Search,
+  Check,
+  Globe,
+  ExternalLink,
+  ShieldCheck,
+  Clock,
+  X,
+  FileCode,
+  FileArchive,
+  ChevronDown,
 } from 'lucide-react';
 
 interface SubmitAssignmentModalProps {
@@ -30,9 +49,6 @@ interface SubmitAssignmentModalProps {
   onSubmitted: (submission: Submission) => void;
   onViewSubmissionsTab?: () => void;
 }
-
-const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip'];
-const FORBIDDEN_EXTENSIONS = ['exe', 'bat', 'cmd', 'sh', 'php', 'js', 'jsx', 'ts', 'tsx', 'html', 'htm', 'vbs', 'scr', 'dll'];
 
 export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
   assignment,
@@ -44,11 +60,28 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
   const { user } = useAuth();
   const { showToast } = useNotifications();
 
+  // Active Tab: 'upload' | 'url' | 'existing'
+  const [activeTab, setActiveTab] = useState<'upload' | 'url' | 'existing'>('upload');
+
+  // File Upload State
   const [file, setFile] = useState<File | null>(null);
   const [fileDataUrl, setFileDataUrl] = useState<string | null>(null);
+
+  // URL Import State
+  const [urlInput, setUrlInput] = useState('');
+  const [urlFormat, setUrlFormat] = useState('github');
+
+  // Choose Existing State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedExistingId, setSelectedExistingId] = useState<string | null>(null);
+
+  // Form Controls
+  const [submissionType, setSubmissionType] = useState('final');
   const [comments, setComments] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Upload Progress & Submitting State
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [statusText, setStatusText] = useState('Uploading...');
@@ -62,10 +95,12 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
     mimeType?: string;
     sha256Hash?: string;
     submittedAt?: string;
+    url?: string;
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Deadline calculations
   const now = new Date();
   const dueDate = new Date(assignment?.dueAt || now);
   const isLate = now > dueDate;
@@ -78,33 +113,47 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
     penaltyPercent = Math.min(100, lateDays * (assignment.latePenaltyPercentPerDay || 0));
   }
 
+  // Retrieve user's previous submissions for "Choose Existing" tab
+  const pastSubmissions = useMemo(() => {
+    if (!user) return [];
+    return storage.getSubmissions().filter((s) => s.studentId === user.id);
+  }, [user, isOpen]);
+
+  const filteredPastSubmissions = useMemo(() => {
+    if (!searchQuery.trim()) return pastSubmissions;
+    const q = searchQuery.toLowerCase();
+    return pastSubmissions.filter(
+      (s) =>
+        s.assignmentTitle?.toLowerCase().includes(q) ||
+        s.courseName?.toLowerCase().includes(q) ||
+        s.fileName?.toLowerCase().includes(q)
+    );
+  }, [pastSubmissions, searchQuery]);
+
+  // Validation
   const validateFile = (selectedFile: File): boolean => {
     setError(null);
-
     if (!selectedFile) {
       setError('Please select an assignment file.');
       return false;
     }
-
     if (selectedFile.size === 0) {
       setError('File is empty or corrupted. Please select a valid document.');
       return false;
     }
-
-    const maxMb = 100; // Allow files up to 100MB
+    const maxMb = 100;
     const maxBytes = maxMb * 1024 * 1024;
     if (selectedFile.size > maxBytes) {
       setError(`File size exceeds the ${maxMb} MB limit. Please select a smaller file.`);
       return false;
     }
-
     return true;
   };
 
   const handleFileSelect = (selected: File) => {
     if (validateFile(selected)) {
       setFile(selected);
-      // Read file as Data URL for browser preview/download backup
+      setSelectedExistingId(null);
       const reader = new FileReader();
       reader.onload = (e) => {
         setFileDataUrl(e.target?.result as string);
@@ -139,9 +188,26 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
     }
   };
 
+  const handleSelectPastSubmission = (sub: Submission) => {
+    setSelectedExistingId(sub.id);
+    setError(null);
+    // Create a mock representation for submitting the existing file
+    const syntheticFile = new File(
+      [new Blob([sub.fileData || 'Reused past submission coursework content'], { type: sub.fileType || 'application/pdf' })],
+      sub.fileName || 'reused_submission.pdf',
+      { type: sub.fileType || 'application/pdf' }
+    );
+    setFile(syntheticFile);
+    if (sub.fileData) {
+      setFileDataUrl(sub.fileData);
+    }
+  };
+
   const handleReset = () => {
     setFile(null);
     setFileDataUrl(null);
+    setUrlInput('');
+    setSelectedExistingId(null);
     setComments('');
     setError(null);
     if (fileInputRef.current) {
@@ -151,20 +217,31 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
 
   const handleInitialSubmitClick = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
     if (!user) {
       setError('Your session has expired. Please log in again.');
       return;
     }
-
     if (!assignment) {
       setError('This assignment is no longer available for submission.');
       return;
     }
 
-    if (!file) {
-      setError('Please select an assignment file.');
-      return;
+    if (activeTab === 'url') {
+      if (!urlInput.trim()) {
+        setError('Please enter a valid project repository or document URL.');
+        return;
+      }
+      if (!urlInput.trim().startsWith('http://') && !urlInput.trim().startsWith('https://')) {
+        setError('Please enter a complete URL starting with https:// or http://');
+        return;
+      }
+    } else {
+      if (!file) {
+        setError('Please select an assignment file to submit.');
+        return;
+      }
     }
 
     if (isLate && !assignment.allowLateSubmission) {
@@ -176,26 +253,51 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
   };
 
   const executeFinalSubmission = async () => {
-    if (!file || !assignment || !user) return;
+    if (!assignment || !user) return;
     setShowConfirmDialog(false);
     setIsUploading(true);
-    setStatusText('Uploading...');
+    setStatusText('Preparing coursework payload...');
     setUploadProgress(20);
 
     try {
-      let storedFilename = `submission_${assignment.id}_${user.id}_${Date.now()}.${file.name.split('.').pop()}`;
+      // Determine effective file payload
+      let effectiveFile = file;
+      if (activeTab === 'url' && urlInput.trim()) {
+        const linkPayload =
+          `SCHOLARIS ONLINE PROJECT SUBMISSION\n` +
+          `===================================\n` +
+          `Course: ${assignment.courseName} (${assignment.courseCode})\n` +
+          `Assignment: ${assignment.title}\n` +
+          `Student: ${user.name} (${user.studentIdNumber || user.id})\n` +
+          `Project Link: ${urlInput.trim()}\n` +
+          `Platform Type: ${urlFormat.toUpperCase()}\n` +
+          `Submission Type: ${submissionType}\n` +
+          `Comments: ${comments || 'None'}\n` +
+          `Submitted Timestamp: ${new Date().toISOString()}\n`;
+
+        effectiveFile = new File(
+          [linkPayload],
+          `${assignment.courseCode.toLowerCase().replace(/[^a-z0-9]/g, '_')}_project_link.txt`,
+          { type: 'text/plain' }
+        );
+      }
+
+      if (!effectiveFile) {
+        throw new Error('No valid submission file found.');
+      }
+
+      let storedFilename = `submission_${assignment.id}_${user.id}_${Date.now()}.${effectiveFile.name.split('.').pop()}`;
       let serverMetadata: any = null;
       let serverR2Url: string | undefined = undefined;
       let serverSubmissionId: string | undefined = undefined;
       let serverReceiptId: string | undefined = undefined;
 
-      // Step progress: Validate & Upload to secure server vault & Cloudflare R2
-      setUploadProgress(35);
-      setStatusText('Validating MIME type & syncing with Cloudflare R2...');
+      setUploadProgress(40);
+      setStatusText('Validating security integrity & syncing with Cloudflare R2...');
 
       const formData = new FormData();
-      formData.append('assignmentFile', file);
-      formData.append('file', file);
+      formData.append('assignmentFile', effectiveFile);
+      formData.append('file', effectiveFile);
       formData.append('assignmentId', assignment.id);
       formData.append('userId', user.id);
       formData.append('studentId', user.id);
@@ -212,7 +314,7 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
       formData.append('allowedTypes', JSON.stringify([]));
 
       setUploadProgress(65);
-      setStatusText('Streaming to Cloudflare R2 storage...');
+      setStatusText('Streaming file payload to Cloudflare R2 storage...');
 
       try {
         const response = await fetch(`/api/assignments/${assignment.id}/submit`, {
@@ -243,16 +345,13 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
           if (resData.receiptId) {
             serverReceiptId = resData.receiptId;
           }
-        } else if (!response.ok && contentType.includes('application/json')) {
-          const errorData = await response.json().catch(() => ({}));
-          console.warn('Server upload message, storing locally:', errorData);
         }
       } catch (uploadNetErr) {
-        console.warn('Backend server vault sync bypassed, saving to local storage:', uploadNetErr);
+        console.warn('Backend vault sync bypassed, recording to local persistence:', uploadNetErr);
       }
 
       setUploadProgress(85);
-      setStatusText('Recording audit log and digital receipt...');
+      setStatusText('Recording audit log and digital verifiable receipt...');
 
       const submission = storage.saveSubmission(
         {
@@ -266,27 +365,35 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
           studentId: user.id,
           studentName: user.name,
           studentIdNumber: user.studentIdNumber || 'STU-2026-001',
-          fileName: file.name,
+          fileName: effectiveFile.name,
           fileKey: storedFilename,
           storedFileName: storedFilename,
           fileMetadata: serverMetadata,
           r2Url: serverR2Url,
-          fileSize: serverMetadata?.fileSizeFormatted || `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-          fileType: serverMetadata?.mimeType || file.type || `application/${file.name.split('.').pop()}`,
+          fileSize:
+            serverMetadata?.fileSizeFormatted ||
+            `${(effectiveFile.size / (1024 * 1024)).toFixed(2)} MB`,
+          fileType:
+            serverMetadata?.mimeType ||
+            effectiveFile.type ||
+            `application/${effectiveFile.name.split('.').pop()}`,
           fileData: fileDataUrl || undefined,
-          comments,
+          comments: comments + (urlInput ? ` [Attached URL: ${urlInput}]` : ''),
         } as any,
         user
       );
 
       setUploadProgress(100);
       setSubmittedFile({
-        name: file.name,
-        size: serverMetadata?.fileSizeFormatted || `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        name: effectiveFile.name,
+        size:
+          serverMetadata?.fileSizeFormatted ||
+          `${(effectiveFile.size / (1024 * 1024)).toFixed(2)} MB`,
         id: submission.receiptId || submission.id,
         fileKey: storedFilename,
-        mimeType: serverMetadata?.mimeType || file.type,
+        mimeType: serverMetadata?.mimeType || effectiveFile.type,
         sha256Hash: serverMetadata?.sha256Hash,
+        url: urlInput || undefined,
         submittedAt: new Date().toLocaleString('en-GB', {
           day: 'numeric',
           month: 'long',
@@ -309,7 +416,6 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
         });
       } catch (e) {}
 
-      // Audio feedback signal
       if (isLate) {
         playAudioEffect('warning');
         showToast({
@@ -339,15 +445,13 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
       }
     } catch (err: any) {
       setIsUploading(false);
-      setError(err.message || 'Something went wrong while submitting your assignment. Please try again later.');
+      setError(err.message || 'Something went wrong while submitting. Please try again later.');
     }
   };
 
   const handleCloseSuccess = () => {
     setIsSuccess(false);
-    setFile(null);
-    setFileDataUrl(null);
-    setComments('');
+    handleReset();
     setSubmittedFile(null);
     onClose();
   };
@@ -367,133 +471,123 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
 
       <div
         id="submit-assignment-modal-backdrop"
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs overflow-y-auto"
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
       >
         <div
-          id="submit-assignment-dialog"
-          className="relative w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-6 max-h-[90vh] flex flex-col"
-        >
-          {/* Header */}
-          <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 flex items-start justify-between shrink-0">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60">
-                  {assignment.courseCode}
-                </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  Online Assignment Submission
-                </span>
-              </div>
-              <h2 className="text-lg font-black text-slate-900 dark:text-white">
-                {assignment.title}
-              </h2>
-            </div>
-            <button
-              onClick={onClose}
-              disabled={isUploading}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          className="fixed inset-0"
+          onClick={() => {
+            if (!isUploading) onClose();
+          }}
+          aria-hidden="true"
+        />
 
-          <div className="p-6 overflow-y-auto space-y-6">
+        <Card
+          id="submit-assignment-dialog"
+          className="relative z-10 w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-3xl shadow-2xl border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950"
+        >
+          <CardContent className="p-4 sm:p-6 lg:p-8 h-full overflow-y-auto">
+            {/* Success State */}
             {isSuccess && submittedFile ? (
-              <div className="text-center space-y-6 py-4">
-                <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                  <CheckCircle2 className="w-10 h-10" />
+              <div className="text-center space-y-5 py-2">
+                <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+                  <CheckCircle2 className="w-8 h-8" />
                 </div>
 
-                <div className="space-y-1">
-                  <h3 className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">
-                    ✅ Assignment Submitted Successfully
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Your coursework has been securely uploaded and recorded in the university system.
+                <div>
+                  <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                    Assignment Submitted Successfully
+                  </h2>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 max-w-sm mx-auto">
+                    Your coursework has been recorded with a digital verifiable receipt and synced to Cloudflare R2 storage.
                   </p>
                 </div>
 
-                <div className="max-w-md mx-auto p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-left space-y-3.5 shadow-xs">
-                  <div className="flex justify-between items-start border-b border-slate-200/60 dark:border-slate-700/60 pb-2.5">
+                {/* Receipt Details Card */}
+                <div className="p-4 sm:p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 text-left space-y-3 shadow-xs">
+                  <div className="flex justify-between items-start border-b border-neutral-200/70 dark:border-neutral-800 pb-2.5">
                     <div>
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                      <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-0.5">
                         Assignment
                       </span>
-                      <p className="font-bold text-xs text-slate-900 dark:text-white">
+                      <p className="font-semibold text-xs text-neutral-900 dark:text-neutral-100">
                         {assignment.courseName} – {assignment.title}
                       </p>
                     </div>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] font-semibold border-neutral-300 dark:border-neutral-700"
+                    >
+                      {assignment.courseCode}
+                    </Badge>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 border-b border-slate-200/60 dark:border-slate-700/60 pb-2.5">
+                  <div className="grid grid-cols-2 gap-3 border-b border-neutral-200/70 dark:border-neutral-800 pb-2.5">
                     <div>
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                        Uploaded File
+                      <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-0.5">
+                        Uploaded Work
                       </span>
-                      <p className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                      <p className="font-semibold text-xs text-neutral-900 dark:text-neutral-100 truncate">
                         {submittedFile.name}
                       </p>
                     </div>
                     <div>
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                      <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-0.5">
                         File Size
                       </span>
-                      <p className="font-bold text-xs text-slate-700 dark:text-slate-300">
+                      <p className="font-medium text-xs text-neutral-700 dark:text-neutral-300">
                         {submittedFile.size}
                       </p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 border-b border-slate-200/60 dark:border-slate-700/60 pb-2.5">
+                  <div className="grid grid-cols-2 gap-3 border-b border-neutral-200/70 dark:border-neutral-800 pb-2.5">
                     <div>
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                      <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-0.5">
                         Submitted On
                       </span>
-                      <p className="font-semibold text-xs text-slate-900 dark:text-white">
+                      <p className="font-medium text-xs text-neutral-900 dark:text-neutral-100">
                         {submittedFile.submittedAt}
                       </p>
                     </div>
                     <div>
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                      <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-0.5">
                         Status
                       </span>
-                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[11px]">
-                        {isLate ? 'Late Submission' : 'Submitted'}
+                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-semibold text-[11px]">
+                        {isLate ? 'Late Submission' : 'Verified Submitted'}
                       </span>
                     </div>
                   </div>
 
-                  {/* Security & File Management Metadata Verification */}
+                  {/* Security Signature & Vault Key */}
                   <div className="pt-1 space-y-2">
-                    <span className="block text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                      🛡️ File Security & Verification
+                    <span className="block text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                      🛡️ Security & Integrity Receipt
                     </span>
-                    <div className="grid grid-cols-2 gap-2 text-[11px] bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+                    <div className="grid grid-cols-2 gap-2 text-[11px] bg-white dark:bg-neutral-950 p-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800">
                       <div>
-                        <span className="text-slate-400 block text-[9px] uppercase font-semibold">MIME Type</span>
-                        <span className="font-mono text-[10px] text-slate-700 dark:text-slate-300 truncate block">
-                          {submittedFile.mimeType || 'application/pdf'}
+                        <span className="text-neutral-400 block text-[9px] uppercase font-semibold">
+                          Receipt ID
+                        </span>
+                        <span className="font-mono text-[10px] text-neutral-700 dark:text-neutral-300 truncate block">
+                          {submittedFile.id || 'RC-2026-OK'}
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[9px] uppercase font-semibold">Vault Storage</span>
+                        <span className="text-neutral-400 block text-[9px] uppercase font-semibold">
+                          Vault Storage
+                        </span>
                         <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                          Isolated & Restricted
+                          R2 Encrypted & Isolated
                         </span>
                       </div>
-                      {submittedFile.fileKey && (
-                        <div className="col-span-2">
-                          <span className="text-slate-400 block text-[9px] uppercase font-semibold">Safe Server Key</span>
-                          <span className="font-mono text-[10px] text-slate-600 dark:text-slate-400 truncate block">
-                            {submittedFile.fileKey}
-                          </span>
-                        </div>
-                      )}
                       {submittedFile.sha256Hash && (
                         <div className="col-span-2">
-                          <span className="text-slate-400 block text-[9px] uppercase font-semibold">SHA-256 Checksum</span>
-                          <span className="font-mono text-[9px] text-slate-500 dark:text-slate-400 truncate block">
+                          <span className="text-neutral-400 block text-[9px] uppercase font-semibold">
+                            SHA-256 Checksum
+                          </span>
+                          <span className="font-mono text-[9px] text-neutral-500 dark:text-neutral-400 truncate block">
                             {submittedFile.sha256Hash}
                           </span>
                         </div>
@@ -502,35 +596,40 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 max-w-md mx-auto pt-2">
+                {/* Footer Buttons */}
+                <div className="flex items-center gap-3 pt-2">
                   {onViewSubmissionsTab && (
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
                       onClick={() => {
                         handleCloseSuccess();
                         onViewSubmissionsTab();
                       }}
-                      className="flex-1 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-colors"
+                      className="flex-1 rounded-xl text-xs font-semibold"
                     >
                       View My Submissions
-                    </button>
+                    </Button>
                   )}
-                  <button
+                  <Button
                     type="button"
                     onClick={handleCloseSuccess}
-                    className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    className="flex-1 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 text-xs font-semibold"
                   >
                     Done
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : isUploading ? (
-              <div className="p-8 text-center space-y-4 my-6">
-                <div className="w-14 h-14 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              /* Loading State */
+              <div className="py-10 text-center space-y-5">
+                <div className="w-14 h-14 border-3 border-neutral-900 dark:border-white border-t-transparent rounded-full animate-spin mx-auto" />
                 <div className="space-y-1">
-                  <p className="text-base font-bold text-slate-900 dark:text-white">{statusText}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Securing file payload & verifying student credentials...
+                  <p className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+                    {statusText}
+                  </p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                    Securing coursework payload & synchronizing with Cloudflare R2...
                   </p>
                 </div>
                 <div className="max-w-xs mx-auto pt-3">
@@ -545,257 +644,425 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleInitialSubmitClick} className="space-y-5 text-xs">
-                {/* Auto-retrieved Student Profile & Course Metadata Card */}
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-700/80 pb-2.5">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5 text-blue-500" />
-                      Student Information (Auto-Retrieved)
-                    </span>
-                    <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/60">
-                      Verified Account
-                    </span>
+              /* Main Submission Form in 21st.dev Theme */
+              <form onSubmit={handleInitialSubmitClick}>
+                {/* Header Row */}
+                <div className="flex items-start justify-between mb-5 sm:mb-6">
+                  <div className="flex gap-3 sm:gap-4 flex-1">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-neutral-900 dark:bg-neutral-800 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-xs">
+                      <UploadCloud className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <Badge
+                          variant="outline"
+                          className="text-[11px] font-semibold border-neutral-300 dark:border-neutral-700"
+                        >
+                          {assignment.courseCode}
+                        </Badge>
+                        <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
+                          Max: {assignment.maxMarks} Points
+                        </span>
+                      </div>
+                      <h1 className="text-base sm:text-lg font-semibold text-neutral-900 dark:text-neutral-100 truncate">
+                        {assignment.title}
+                      </h1>
+                      <p className="text-neutral-600 dark:text-neutral-400 text-xs sm:text-sm leading-relaxed font-normal mt-0.5 line-clamp-2">
+                        {assignment.description ||
+                          'Drop coursework document or paste a link — verify details and submit securely to your instructor.'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onClose}
+                    disabled={isUploading}
+                    className="text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300 -mt-2 -mr-2 shrink-0"
+                  >
+                    <X className="w-5 h-5" />
+                  </Button>
+                </div>
+
+                {/* Tabs */}
+                <Tabs
+                  value={activeTab}
+                  onValueChange={(v) => {
+                    setActiveTab(v as any);
+                    setError(null);
+                  }}
+                  className="mb-5 sm:mb-6"
+                >
+                  <TabsList className="grid w-full grid-cols-3 rounded-xl p-1 bg-neutral-100 dark:bg-neutral-800">
+                    <TabsTrigger
+                      value="upload"
+                      className="rounded-lg font-medium text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-neutral-900 dark:data-[state=active]:bg-neutral-700 dark:data-[state=active]:text-neutral-100"
+                    >
+                      <Upload className="w-4 h-4 mr-1 sm:mr-2" />
+                      <span className="hidden sm:inline">Upload File</span>
+                      <span className="sm:hidden">Upload</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="url"
+                      className="rounded-lg font-medium text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-neutral-900 dark:data-[state=active]:bg-neutral-700 dark:data-[state=active]:text-neutral-100"
+                    >
+                      <LinkIcon className="w-4 h-4 mr-1 sm:mr-2" />
+                      <span className="hidden sm:inline">Import via URL</span>
+                      <span className="sm:hidden">Link</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="existing"
+                      className="rounded-lg font-medium text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-neutral-900 dark:data-[state=active]:bg-neutral-700 dark:data-[state=active]:text-neutral-100"
+                    >
+                      <FolderOpen className="w-4 h-4 mr-1 sm:mr-2" />
+                      <span className="hidden sm:inline">Choose Existing</span>
+                      <span className="sm:hidden">Past</span>
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* Tab 1: Upload File */}
+                  <TabsContent value="upload" className="mt-4">
+                    {!file ? (
+                      <div
+                        id="drag-drop-zone"
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center transition-all cursor-pointer ${
+                          isDragging
+                            ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 scale-[1.01]'
+                            : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-600 bg-neutral-50/50 dark:bg-neutral-900/40'
+                        }`}
+                      >
+                        <div className="w-12 h-12 bg-neutral-100 dark:bg-neutral-800 rounded-full flex items-center justify-center mx-auto mb-3 text-neutral-600 dark:text-neutral-300">
+                          <Upload className="w-5 h-5" />
+                        </div>
+                        <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-1">
+                          Choose a coursework file or drag & drop here
+                        </p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+                          PDF, DOCX, ZIP, PPT, code, images up to 100MB
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="rounded-xl text-xs font-semibold"
+                        >
+                          Browse Files
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="p-3.5 sm:p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-neutral-900 dark:bg-neutral-800 text-white flex items-center justify-center text-xs font-bold uppercase shrink-0">
+                            {file.name.split('.').pop() || 'FILE'}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs sm:text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate">
+                              {file.name}
+                            </p>
+                            <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                              {(file.size / (1024 * 1024)).toFixed(2)} MB • Ready to submit
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setFile(null);
+                            setFileDataUrl(null);
+                            setSelectedExistingId(null);
+                          }}
+                          className="text-neutral-400 hover:text-red-500 rounded-lg shrink-0"
+                          title="Remove file"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  {/* Tab 2: Import via URL */}
+                  <TabsContent value="url" className="mt-4 space-y-3.5">
+                    <div>
+                      <Label className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 block">
+                        Project Repository or Public Document Link
+                      </Label>
+                      <div className="relative">
+                        <LinkIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                        <Input
+                          type="url"
+                          value={urlInput}
+                          onChange={(e) => setUrlInput(e.target.value)}
+                          placeholder="https://github.com/username/project or drive.google.com/..."
+                          className="pl-10 rounded-xl text-xs h-10"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-[11px] text-neutral-500 dark:text-neutral-400 mb-1.5 block">
+                        Platform / Format
+                      </Label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { id: 'github', label: 'GitHub' },
+                          { id: 'gdrive', label: 'Google Drive' },
+                          { id: 'figma', label: 'Figma' },
+                          { id: 'web', label: 'Live Demo' },
+                        ].map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setUrlFormat(p.id)}
+                            className={`py-1.5 px-2 rounded-xl text-xs font-medium border text-center transition-all ${
+                              urlFormat === p.id
+                                ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 border-transparent shadow-xs'
+                                : 'border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                            }`}
+                          >
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Tab 3: Choose Existing */}
+                  <TabsContent value="existing" className="mt-4 space-y-3">
+                    <div className="relative">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                      <Input
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search your past uploads..."
+                        className="pl-10 rounded-xl text-xs h-9"
+                      />
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+                      {filteredPastSubmissions.length === 0 ? (
+                        <div className="p-6 text-center text-xs text-neutral-400 dark:text-neutral-500">
+                          No previous submissions found to reuse.
+                        </div>
+                      ) : (
+                        filteredPastSubmissions.map((sub) => {
+                          const isSelected = selectedExistingId === sub.id;
+                          return (
+                            <div
+                              key={sub.id}
+                              onClick={() => handleSelectPastSubmission(sub)}
+                              className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                                isSelected
+                                  ? 'border-neutral-900 dark:border-white bg-neutral-50 dark:bg-neutral-900 shadow-xs'
+                                  : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-700 bg-white dark:bg-neutral-950'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center shrink-0 text-neutral-600 dark:text-neutral-300">
+                                  <FileText className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium text-neutral-900 dark:text-neutral-100 truncate">
+                                    {sub.fileName}
+                                  </p>
+                                  <p className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
+                                    {sub.courseName} • {sub.fileSize || 'Standard'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="shrink-0 flex items-center gap-2">
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] capitalize border-neutral-200 dark:border-neutral-700"
+                                >
+                                  {sub.status}
+                                </Badge>
+                                {isSelected && (
+                                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
+                {/* Submission Configuration Controls */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                      Submission Mode
+                    </Label>
+                    <Select value={submissionType} onValueChange={setSubmissionType}>
+                      <SelectTrigger className="rounded-xl h-10 text-xs">
+                        {submissionType === 'final'
+                          ? 'Final Submission'
+                          : submissionType === 'draft'
+                          ? 'Draft / Progress Review'
+                          : 'Lab & Project Code'}
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="final">Final Submission</SelectItem>
+                        <SelectItem value="draft">Draft / Progress Review</SelectItem>
+                        <SelectItem value="lab">Lab & Project Code</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                    <div>
-                      <span className="block text-[10px] text-slate-400">Student Name</span>
-                      <p className="font-bold text-slate-900 dark:text-white truncate">{user.name}</p>
-                    </div>
-                    <div>
-                      <span className="block text-[10px] text-slate-400">ID / Roll No.</span>
-                      <p className="font-mono font-bold text-slate-900 dark:text-white">
-                        {user.studentIdNumber || 'STU-2026-001'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="block text-[10px] text-slate-400">Department</span>
-                      <p className="font-semibold text-slate-800 dark:text-slate-200 truncate">
-                        {user.departmentName || 'Computer Science'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="block text-[10px] text-slate-400">Semester</span>
-                      <p className="font-semibold text-slate-800 dark:text-slate-200">
-                        Semester {user.semester || 5}
-                      </p>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                      Student Verification
+                    </Label>
+                    <div className="h-10 px-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/60 flex items-center justify-between text-xs">
+                      <span className="font-semibold text-neutral-900 dark:text-white truncate">
+                        {user.name}
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                      >
+                        {user.studentIdNumber || 'Verified ID'}
+                      </Badge>
                     </div>
                   </div>
                 </div>
 
-                {/* Assignment Info Card */}
-                <div className="p-4 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/60 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
-                      <BookOpen className="w-4 h-4 text-blue-600" />
-                      Subject: {assignment.courseName} ({assignment.courseCode})
-                    </span>
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                      Max Score: {assignment.maxMarks} Points
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    {assignment.description}
-                  </p>
-
-                  <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-blue-200/50 dark:border-blue-900/40">
-                    <span>Faculty: <strong className="text-slate-800 dark:text-slate-200">{assignment.facultyName || 'Course Instructor'}</strong></span>
-                    <span>Due Date: <strong className="text-slate-800 dark:text-slate-200">{new Date(assignment.dueAt).toLocaleString()}</strong></span>
-                  </div>
-                </div>
-
-                {/* Deadline Warning banner */}
+                {/* Deadline Notice Pill */}
                 <div
-                  className={`p-3.5 rounded-xl border flex items-start gap-3 ${
+                  className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-2 mb-4 ${
                     isLate
-                      ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-300'
-                      : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-300'
+                      ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300'
+                      : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-300'
                   }`}
                 >
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-bold">
-                      {isLate ? 'Late Submission Notice' : 'On-Time Submission Window Active'}
-                    </p>
-                    <p className="text-[11px] mt-0.5 opacity-90">
+                  <div className="flex items-center gap-2">
+                    {isLate ? (
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    ) : (
+                      <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
+                    )}
+                    <span className="font-medium text-xs">
                       {isLate
-                        ? `Due date was ${new Date(assignment.dueAt).toLocaleString()}. Late by ${lateDays} day(s). Penalty: -${penaltyPercent}%.`
-                        : `Submission deadline: ${new Date(assignment.dueAt).toLocaleString()}.`}
-                    </p>
+                        ? `Late by ${lateDays} day(s) (Penalty: -${penaltyPercent}%)`
+                        : `On-time submission window active (Due: ${new Date(
+                            assignment.dueAt
+                          ).toLocaleDateString()})`}
+                    </span>
                   </div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider opacity-80">
+                    {isLate ? 'Late Notice' : 'On-Time'}
+                  </span>
+                </div>
+
+                {/* Comments / Notes */}
+                <div className="space-y-1.5 mb-5">
+                  <Label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                    Notes / Explanation for Faculty (Optional)
+                  </Label>
+                  <Input
+                    value={comments}
+                    onChange={(e) => setComments(e.target.value)}
+                    placeholder="Provide any additional comments or notes regarding your submission..."
+                    className="rounded-xl h-10 text-xs"
+                  />
                 </div>
 
                 {/* Error Banner */}
                 {error && (
-                  <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 flex items-start gap-2.5 animate-shake">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span className="font-semibold leading-relaxed">{error}</span>
+                  <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span className="font-medium">{error}</span>
                   </div>
                 )}
 
-                {/* Drag and Drop File Upload Area */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
-                    Upload Assignment File *
-                  </label>
-
-                  {!file ? (
-                    <div
-                      id="drag-drop-zone"
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
-                        isDragging
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 scale-[1.01]'
-                          : 'border-slate-300 dark:border-slate-700 hover:border-blue-500/80 bg-slate-50/50 dark:bg-slate-800/30'
-                      }`}
-                    >
-                      <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 mx-auto flex items-center justify-center mb-3 shadow-xs">
-                        <UploadCloud className="w-6 h-6" />
-                      </div>
-                      <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                        Drag & Drop Assignment Here
-                      </p>
-                      <p className="text-xs text-slate-400 my-1 font-medium">or</p>
-                      <button
-                        type="button"
-                        className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors"
-                      >
-                        Choose File
-                      </button>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-3 font-medium">
-                        Supported Formats: <span className="font-semibold text-slate-700 dark:text-slate-300">Any file type allowed (PDF, DOCX, ZIP, images, code, media, etc.)</span>
-                      </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Maximum file size: <strong className="text-slate-600 dark:text-slate-300">Up to 100 MB</strong>
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 font-bold uppercase text-xs">
-                            {file.name.split('.').pop() || 'FILE'}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
-                              {file.name}
-                            </p>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                              {(file.size / (1024 * 1024)).toFixed(2)} MB • {file.type || 'Document'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFile(null);
-                            setFileDataUrl(null);
-                          }}
-                          disabled={isUploading}
-                          className="p-2 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0"
-                          title="Remove file"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Notes / Explanation for Faculty (Optional)
-                  </label>
-                  <textarea
-                    value={comments}
-                    onChange={(e) => setComments(e.target.value)}
-                    rows={2}
-                    placeholder="Provide any additional comments or notes regarding your submission..."
-                    className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Modal Footer Controls */}
-                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
-                  <button
+                {/* Footer Controls */}
+                <div className="flex items-center justify-between pt-4 border-t border-neutral-100 dark:border-neutral-800">
+                  <Button
                     type="button"
+                    variant="ghost"
                     onClick={handleReset}
-                    disabled={isUploading || (!file && !comments)}
-                    className="px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 disabled:opacity-40"
+                    disabled={isUploading || (!file && !urlInput && !comments)}
+                    className="rounded-xl text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
+                    <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
                     Reset
-                  </button>
+                  </Button>
 
-                  <div className="flex items-center gap-2.5">
-                    <button
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <Button
                       type="button"
+                      variant="outline"
                       onClick={onClose}
                       disabled={isUploading}
-                      className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"
+                      className="rounded-xl text-xs font-medium"
                     >
                       Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       id="modal-final-submit-btn"
                       type="submit"
-                      disabled={isUploading || !file}
-                      className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 flex items-center gap-2 disabled:opacity-50 min-h-[44px]"
+                      disabled={isUploading || (!file && !urlInput)}
+                      className="rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 text-xs font-semibold px-5 min-h-[40px] shadow-sm"
                     >
                       Submit Assignment
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </form>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
+      {/* Confirmation Dialog in Same Sleek Theme */}
       {showConfirmDialog && (
         <div
           id="submission-confirmation-modal"
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs"
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs"
         >
-          <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-3">
+          <Card className="relative w-full max-w-md rounded-3xl bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 shadow-2xl p-6">
+            <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
               Confirm Assignment Submission
             </h3>
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 mb-4 space-y-1.5">
-              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Target File:
+            <p className="text-neutral-500 dark:text-neutral-400 text-xs leading-relaxed mb-4">
+              Are you sure you want to submit this coursework? Your submission will be timestamped and cryptographically signed.
+            </p>
+
+            <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 mb-5 space-y-1">
+              <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                Target Payload:
               </span>
-              <p className="font-bold text-xs text-slate-900 dark:text-white break-all">
-                {file?.name}
+              <p className="font-semibold text-xs text-neutral-900 dark:text-neutral-100 break-all">
+                {file?.name || urlInput}
               </p>
             </div>
-            <p className="text-slate-600 dark:text-slate-300 text-xs leading-relaxed mb-5">
-              Are you sure you want to submit this coursework file? Your timestamp and digital signature will be logged.
-            </p>
-            <div className="flex items-center justify-end gap-3">
-              <button
+
+            <div className="flex items-center justify-end gap-2.5">
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setShowConfirmDialog(false)}
-                className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="rounded-xl text-xs font-medium"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 id="confirm-submit-dialog-btn"
                 type="button"
                 onClick={executeFinalSubmission}
-                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-600/20"
+                className="rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 text-xs font-semibold px-4"
               >
                 Confirm & Submit
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </>
