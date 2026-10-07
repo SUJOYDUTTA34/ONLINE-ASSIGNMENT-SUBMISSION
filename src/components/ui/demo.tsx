@@ -7,6 +7,8 @@ import { InteractiveHoverButton } from "@/components/ui/interactive-hover-button
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { SonarGrid } from "@/components/ui/sonar-grid";
 import { ShinyButton } from "@/components/ui/shiny-button";
+import { InputModal } from "@/components/ui/input-modal";
+import { Button } from "@/components/ui/button";
 import { useId, useState } from "react";
 import { ArrowRight, Sparkles, UserPlus, LogIn } from "lucide-react";
 
@@ -172,6 +174,18 @@ export function PasswordStrengthDemo() {
       />
 
       <PasswordStrength value={value} className="mt-3" />
+    </div>
+  );
+}
+
+export function InputModalDemo() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex flex-col items-center justify-center p-8 bg-neutral-100 dark:bg-neutral-900 rounded-3xl gap-4">
+      <Button onClick={() => setOpen(true)} className="rounded-2xl">
+        Open Audio Show Creator
+      </Button>
+      {open && <InputModal isOpen={open} onClose={() => setOpen(false)} />}
     </div>
   );
 }

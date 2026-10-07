@@ -22,6 +22,7 @@ import {
   FileDown,
   Trash2,
   UploadCloud,
+  Eye,
 } from 'lucide-react';
 
 interface StudentCoursesProps {
@@ -41,6 +42,13 @@ export const StudentCourses: React.FC<StudentCoursesProps> = ({
   const [isAddCourseModalOpen, setIsAddCourseModalOpen] = useState(false);
   const [uploadCourseTargetId, setUploadCourseTargetId] = useState<string>('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Live real-time sync with Cloudflare D1
+  React.useEffect(() => {
+    storage.syncWithD1().then(() => {
+      setRefreshTrigger((prev) => prev + 1);
+    }).catch(() => {});
+  }, []);
 
   if (!user) return null;
 
@@ -429,6 +437,18 @@ export const StudentCourses: React.FC<StudentCoursesProps> = ({
                           </div>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
+                          {((doc as any).r2Url || (doc as any).fileKey || (doc as any).dataUrl) && (
+                            <button
+                              onClick={() => {
+                                const previewUrl = (doc as any).r2Url || ((doc as any).fileKey ? `/api/files/preview/${(doc as any).fileKey}` : (doc as any).dataUrl);
+                                if (previewUrl) window.open(previewUrl, '_blank');
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 transition-colors cursor-pointer"
+                              title={`Preview ${(doc as any).fileName || (doc as any).name}`}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDownloadDocument(doc)}
                             className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"

@@ -91,6 +91,28 @@
   ],
   "submissions": [
     {
+      "id": "sub-720634",
+      "assignment_id": "asg-501",
+      "student_id": "stu-live-1791396718234",
+      "student_name": "Souvik Mukherjee",
+      "student_email": "student_1791396718234@college.edu",
+      "student_id_number": "",
+      "file_name": "Souvik_OS_Scheduling_Assignment.pdf",
+      "file_url": "https://pub-8557046cca48459d9643063d35d0e38c.r2.dev/submissions/Souvik_OS_Scheduling_Assignment.pdf",
+      "file_key": "secfile_f023e1fa-584a-4a82-a01e-396428703d2a_e33617d6b65f.pdf",
+      "file_size": "0 KB",
+      "mime_type": "application/pdf",
+      "sha256_hash": "e020199b33939076e2fbc75f5affef51a93994228f1549ffcffcbfaf4a92eb3b",
+      "status": "submitted",
+      "version": 1,
+      "receipt_id": "REC-MUYFCS1M",
+      "submitted_at": "2026-10-07T18:12:00.643Z",
+      "grade_score": null,
+      "grade_feedback": null,
+      "graded_by": null,
+      "graded_at": null
+    },
+    {
       "id": "sub-021466",
       "assignment_id": "asg-501",
       "student_id": "stu-test-1791394020511",
@@ -223,5 +245,21 @@
       "graded_at": null
     }
   ],
-  "materials": []
+  "materials": [
+    {
+      "id": "meta_8090971d-f5f4-4f87-8976-0f5c57cfc054",
+      "course_id": "course-1791396718234",
+      "course_code": "TEST-234",
+      "name": "OS Lab Manual & Lecture Notes",
+      "file_name": "OS_Lab_Syllabus.txt",
+      "file_key": "secfile_159c8701-8b65-48ad-a19c-709f8d0a86e7_66d811d6fbb4.txt",
+      "file_url": "https://pub-8557046cca48459d9643063d35d0e38c.r2.dev/materials/OS_Lab_Syllabus.txt",
+      "file_size": "0 KB",
+      "file_type": "txt",
+      "category": "lecture",
+      "uploaded_by": "Souvik Mukherjee",
+      "uploaded_by_id": "stu-live-1791396718234",
+      "uploaded_at": "2026-10-07T18:11:59.402Z"
+    }
+  ]
 }

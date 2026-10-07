@@ -6,13 +6,18 @@ import { AuthModal } from './components/public/AuthModal';
 import { ForgotPasswordModal } from './components/public/ForgotPasswordModal';
 import { Layout } from './components/layout/Layout';
 import { GraduationCap, ArrowRight, Eye } from 'lucide-react';
+import { storage } from './services/storage';
 
 const AppContent: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
 
-  // Background sync with Cloudflare D1 database
+  // Continuous real-time background sync with Cloudflare D1 database
   React.useEffect(() => {
-    fetch('/api/sync-d1', { method: 'POST' }).catch(() => {});
+    storage.syncWithD1().catch(() => {});
+    const interval = setInterval(() => {
+      storage.syncWithD1().catch(() => {});
+    }, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   // Auth Modals

@@ -260,36 +260,6 @@ async function startServer() {
     }
   });
 
-  // Courses List: GET /api/courses
-  app.get("/api/courses", async (req, res) => {
-    try {
-      const courses = await getD1Courses();
-      return res.json({ success: true, courses });
-    } catch (err: any) {
-      return res.status(500).json({ success: false, error: err?.message });
-    }
-  });
-
-  // Create or Update Course: POST /api/courses
-  app.post("/api/courses", async (req, res) => {
-    try {
-      const result = await saveD1Course(req.body);
-      return res.json({ success: true, ...result });
-    } catch (err: any) {
-      return res.status(500).json({ success: false, error: err?.message });
-    }
-  });
-
-  // Delete Course: DELETE /api/courses/:id
-  app.delete("/api/courses/:id", async (req, res) => {
-    try {
-      const id = req.params.id;
-      await deleteD1Course(id);
-      return res.json({ success: true, message: `Course ${id} deleted.` });
-    } catch (err: any) {
-      return res.status(500).json({ success: false, error: err?.message });
-    }
-  });
 
   // Users List: GET /api/users
   app.get("/api/users", async (req, res) => {
@@ -555,6 +525,126 @@ async function startServer() {
         return res.status(500).json({
           success: false,
           message: "Internal error processing file upload. Please try again.",
+        });
+      }
+    }
+  );
+
+  // 2. Course Materials & General File Upload: POST /api/files/upload
+  app.post(
+    "/api/files/upload",
+    upload.single("file") as any,
+    async (req: express.Request, res: express.Response) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({
+            success: false,
+            message: "No document file was provided in the upload request.",
+          });
+        }
+
+        const body = req.body || {};
+        const userMeta = {
+          id: (req.headers["x-user-id"] as string) || body.userId || "user-unknown",
+          name: (req.headers["x-user-name"] as string) || body.userName || "User",
+          email: (req.headers["x-user-email"] as string) || body.userEmail || "",
+          role: (req.headers["x-user-role"] as string) || body.userRole || "faculty",
+        };
+
+        const courseId = body.courseId || "gen-course";
+        const courseCode = body.courseCode || "GEN";
+        const courseName = body.courseName || "General Course";
+        const docName = body.assignmentTitle || body.docName || req.file.originalname;
+        const category = body.category || "lecture";
+        const description = body.description || "";
+
+        // Store file in private vault with security validation
+        const result = await storeSecureFile(
+          {
+            originalname: req.file.originalname,
+            buffer: req.file.buffer,
+            size: req.file.size,
+            mimetype: req.file.mimetype,
+          },
+          userMeta,
+          {
+            id: courseId,
+            title: docName,
+            courseId,
+            courseCode,
+            courseName,
+          },
+          {
+            id: `doc-${Date.now()}`,
+            receiptId: `DOC-${Date.now().toString(36).toUpperCase()}`,
+            version: 1,
+          },
+          { maxFileSizeMb: 100 }
+        );
+
+        if (!result.success || !result.metadata) {
+          return res.status(400).json({
+            success: false,
+            message: result.error || "File security validation failed.",
+          });
+        }
+
+        const metadata = result.metadata;
+
+        // Upload to Cloudflare R2 bucket in materials/ folder
+        let r2Result = null;
+        try {
+          r2Result = await uploadToCloudflareR2(
+            req.file.buffer,
+            metadata.originalFilename || req.file.originalname,
+            metadata.mimeType || req.file.mimetype,
+            "materials"
+          );
+        } catch (r2Err) {
+          console.warn("[Cloudflare R2] Course material upload attempt logged:", r2Err);
+        }
+
+        // Save course material record into Cloudflare D1
+        let d1Result = null;
+        try {
+          d1Result = await saveD1CourseMaterial({
+            id: metadata.id,
+            courseId,
+            courseCode,
+            name: docName,
+            fileName: metadata.originalFilename,
+            fileKey: metadata.fileKey,
+            fileUrl: r2Result?.url || metadata.fileKey,
+            fileSize: metadata.fileSizeFormatted,
+            fileType: metadata.extension,
+            category,
+            description,
+            uploadedBy: userMeta.name,
+            uploadedById: userMeta.id,
+            uploadedAt: metadata.uploadTime,
+          });
+        } catch (d1Err) {
+          console.warn("[Cloudflare D1] Course material record save logged:", d1Err);
+        }
+
+        return res.status(201).json({
+          success: true,
+          message: "Document successfully uploaded and synced with Cloudflare R2 & D1.",
+          fileKey: metadata.fileKey,
+          storedFilename: metadata.fileKey,
+          filename: metadata.originalFilename,
+          fileSize: metadata.fileSizeFormatted,
+          mimeType: metadata.mimeType,
+          r2Url: r2Result?.url || null,
+          r2: r2Result,
+          d1: d1Result,
+          metadata,
+        });
+      } catch (error) {
+        console.error("[FileSecurity] Error during material upload:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Internal error processing document upload.",
         });
       }
     }

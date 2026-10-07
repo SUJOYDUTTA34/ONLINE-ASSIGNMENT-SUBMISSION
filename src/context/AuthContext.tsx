@@ -132,6 +132,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ipAddress: '127.0.0.1',
     });
 
+    // Ensure user profile is immediately synced to Cloudflare D1
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(foundUser),
+    }).catch(() => {});
+
+    // Refresh application state from Cloudflare D1
+    storage.syncWithD1().catch(() => {});
+
     setIsLoading(false);
     return { success: true };
   };

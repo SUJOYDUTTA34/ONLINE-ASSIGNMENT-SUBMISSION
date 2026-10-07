@@ -57,6 +57,20 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Live real-time sync with Cloudflare D1 on mount
+  React.useEffect(() => {
+    fetch('/api/courses')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.courses)) {
+          storage.syncWithD1().then(() => {
+            setCourses(storage.getCourses());
+          });
+        }
+      })
+      .catch((e) => console.warn('D1 live courses fetch notice:', e));
+  }, []);
+
   const activeCourseForDocs = selectedCourseForDocs
     ? (storage.getCourseById(selectedCourseForDocs.id) || selectedCourseForDocs)
     : null;
@@ -125,7 +139,7 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({
     setModalOpen(true);
   };
 
-  const handleSaveCourse = (e: React.FormEvent) => {
+  const handleSaveCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
 
@@ -153,27 +167,27 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({
       if (editingCourse) {
         saved = storage.updateCourse(editingCourse.id, courseData, currentUser || undefined);
         setCourses(courses.map((c) => (c.id === saved.id ? saved : c)));
-        showToast({
-          type: 'success',
-          title: 'Course Updated',
-          message: `${saved.code} — ${saved.title} updated and synced with D1.`,
-        });
       } else {
         saved = storage.createCourse(courseData, currentUser || undefined);
         setCourses([...courses, saved]);
-        showToast({
-          type: 'success',
-          title: 'Course Added',
-          message: `${saved.code} catalog entry created and stored in D1.`,
-        });
       }
 
-      // Sync with Cloudflare D1 database
-      fetch('/api/courses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(saved),
-      }).catch((e) => console.warn('D1 course sync warning:', e));
+      // Immediately sync with Cloudflare D1 database
+      try {
+        await fetch('/api/courses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(saved),
+        });
+      } catch (d1Err) {
+        console.warn('D1 course sync warning:', d1Err);
+      }
+
+      showToast({
+        type: 'success',
+        title: editingCourse ? 'Course Updated' : 'Course Added',
+        message: `${saved.code} — ${saved.title} synchronized to Cloudflare D1.`,
+      });
 
       setModalOpen(false);
       if (onCloseAddModal) onCloseAddModal();

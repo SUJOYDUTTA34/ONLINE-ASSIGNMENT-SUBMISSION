@@ -57,6 +57,14 @@ export const StudentAssignments: React.FC<StudentAssignmentsProps> = ({
   const [studentSubmissions, setStudentSubmissions] = useState<Submission[]>(() =>
     storage.getSubmissions().filter((s) => s.studentId === user?.id)
   );
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  useEffect(() => {
+    storage.syncWithD1().then(() => {
+      setStudentSubmissions(storage.getSubmissions().filter((s) => s.studentId === user?.id));
+      setRefreshTrigger((prev) => prev + 1);
+    }).catch(() => {});
+  }, [user?.id]);
 
   const handleDeleteSubmission = (submissionId: string, title: string) => {
     try {
@@ -355,13 +363,27 @@ export const StudentAssignments: React.FC<StudentAssignmentsProps> = ({
                     </button>
 
                     {submission && (
-                      <button
-                        onClick={() => handleDeleteSubmission(submission.id, asg.title)}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
-                        title="Delete/Withdraw submission"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <>
+                        {((submission as any).r2Url || (submission as any).fileKey || (submission as any).fileData) && (
+                          <button
+                            onClick={() => {
+                              const previewUrl = (submission as any).r2Url || ((submission as any).fileKey ? `/api/files/preview/${(submission as any).fileKey}` : (submission as any).fileData);
+                              if (previewUrl) window.open(previewUrl, '_blank');
+                            }}
+                            className="p-1.5 rounded-xl text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
+                            title={`Preview submitted file: ${submission.fileName}`}
+                          >
+                            <FileCheck className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteSubmission(submission.id, asg.title)}
+                          className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+                          title="Delete/Withdraw submission"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
                     )}
                   </div>
 

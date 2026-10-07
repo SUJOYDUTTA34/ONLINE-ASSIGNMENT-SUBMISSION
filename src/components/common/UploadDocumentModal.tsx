@@ -161,6 +161,7 @@ export const UploadDocumentModal: React.FC<UploadDocumentModalProps> = ({
 
       // Upload file to server vault
       let serverFileKey: string | undefined = undefined;
+      let serverR2Url: string | undefined = undefined;
       try {
         const formData = new FormData();
         formData.append('file', file);
@@ -187,6 +188,9 @@ export const UploadDocumentModal: React.FC<UploadDocumentModalProps> = ({
           if (uploadJson.success && uploadJson.fileKey) {
             serverFileKey = uploadJson.fileKey;
           }
+          if (uploadJson.r2Url) {
+            serverR2Url = uploadJson.r2Url;
+          }
         }
       } catch (uploadErr) {
         console.warn('Backend file vault sync skipped, using local persistence:', uploadErr);
@@ -197,6 +201,8 @@ export const UploadDocumentModal: React.FC<UploadDocumentModalProps> = ({
         name: docName.trim(),
         fileName: file.name,
         fileKey: serverFileKey,
+        fileUrl: serverR2Url || (serverFileKey ? `/api/files/preview/${serverFileKey}` : undefined),
+        r2Url: serverR2Url,
         fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
         fileType: fileExtension.toUpperCase(),
         category,

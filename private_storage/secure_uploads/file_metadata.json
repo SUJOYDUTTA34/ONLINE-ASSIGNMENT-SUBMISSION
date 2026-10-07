@@ -298,5 +298,65 @@
       "receiptId": "REC-MUYDQXCQ",
       "version": 1
     }
+  },
+  {
+    "id": "meta_8090971d-f5f4-4f87-8976-0f5c57cfc054",
+    "fileKey": "secfile_159c8701-8b65-48ad-a19c-709f8d0a86e7_66d811d6fbb4.txt",
+    "originalFilename": "OS_Lab_Syllabus.txt",
+    "fileSize": 87,
+    "fileSizeFormatted": "0 KB",
+    "mimeType": "text/plain",
+    "extension": "txt",
+    "sha256Hash": "2c24531b4a1744698f0497f73d6d655f32b3458502f92c1e854c09700c93de50",
+    "uploadTime": "2026-10-07T18:11:59.402Z",
+    "user": {
+      "id": "stu-live-1791396718234",
+      "name": "Souvik Mukherjee",
+      "email": "student_1791396718234@college.edu",
+      "role": "student",
+      "studentIdNumber": ""
+    },
+    "assignment": {
+      "id": "course-1791396718234",
+      "title": "OS Lab Manual & Lecture Notes",
+      "courseId": "course-1791396718234",
+      "courseCode": "TEST-234",
+      "courseName": "Operating Systems & Cloud Architecture"
+    },
+    "submission": {
+      "id": "doc-1791396719389",
+      "receiptId": "DOC-MUYFCR31",
+      "version": 1
+    }
+  },
+  {
+    "id": "meta_8bfe8b5c-c54d-41c0-8919-ae5413a9acef",
+    "fileKey": "secfile_f023e1fa-584a-4a82-a01e-396428703d2a_e33617d6b65f.pdf",
+    "originalFilename": "Souvik_OS_Scheduling_Assignment.pdf",
+    "fileSize": 312,
+    "fileSizeFormatted": "0 KB",
+    "mimeType": "application/pdf",
+    "extension": "pdf",
+    "sha256Hash": "e020199b33939076e2fbc75f5affef51a93994228f1549ffcffcbfaf4a92eb3b",
+    "uploadTime": "2026-10-07T18:12:00.643Z",
+    "user": {
+      "id": "stu-live-1791396718234",
+      "name": "Souvik Mukherjee",
+      "email": "student_1791396718234@college.edu",
+      "role": "student",
+      "studentIdNumber": ""
+    },
+    "assignment": {
+      "id": "asg-501",
+      "title": "SQL Normalization & BCNF Implementation",
+      "courseId": "",
+      "courseCode": "CS-301",
+      "courseName": "Database Management Systems"
+    },
+    "submission": {
+      "id": "sub-720634",
+      "receiptId": "REC-MUYFCS1M",
+      "version": 1
+    }
   }
 ]

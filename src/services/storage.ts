@@ -369,14 +369,53 @@ export const storage = {
 
   async syncWithD1(): Promise<void> {
     try {
-      const [usersRes, subsRes, asgsRes] = await Promise.all([
+      const [usersRes, subsRes, asgsRes, coursesRes] = await Promise.all([
         fetch("/api/users").then((r) => r.json()).catch(() => null),
         fetch("/api/submissions").then((r) => r.json()).catch(() => null),
         fetch("/api/assignments").then((r) => r.json()).catch(() => null),
+        fetch("/api/courses").then((r) => r.json()).catch(() => null),
       ]);
 
       if (usersRes?.success && Array.isArray(usersRes.users)) {
         this.syncUsersFromD1(usersRes.users);
+      }
+
+      if (coursesRes?.success && Array.isArray(coursesRes.courses)) {
+        const localCourses = getItem<Course[]>(KEYS.COURSES, INITIAL_COURSES);
+        const mergedCourses = [...localCourses];
+        for (const c of coursesRes.courses) {
+          const idx = mergedCourses.findIndex((lc) => lc.id === c.id || (lc.code && c.code && lc.code.toUpperCase() === c.code.toUpperCase()));
+          const mappedCourse: Course = {
+            id: c.id,
+            code: c.code || c.courseCode,
+            courseCode: c.code || c.courseCode,
+            title: c.title || c.courseName,
+            courseName: c.title || c.courseName,
+            departmentId: c.department_id || c.departmentId || "dept-1",
+            departmentName: c.department_name || c.departmentName || "Computer Science",
+            departmentCode: c.department_code || c.departmentCode || "CS",
+            semester: Number(c.semester || 1),
+            academicYear: c.academic_year || c.academicYear || "2026-2027",
+            facultyId: c.faculty_id || c.facultyId || "",
+            facultyName: c.faculty_name || c.facultyName || "Faculty",
+            description: c.description || "",
+            syllabus: c.syllabus || "",
+            credits: Number(c.credits || 4),
+            status: c.status || "active",
+            enrolledStudentIds: c.enrolled_student_ids || c.enrolledStudentIds || [],
+            documents: c.documents || [],
+          };
+          if (idx >= 0) {
+            mergedCourses[idx] = {
+              ...mergedCourses[idx],
+              ...mappedCourse,
+              documents: mergedCourses[idx].documents?.length ? mergedCourses[idx].documents : mappedCourse.documents,
+            };
+          } else {
+            mergedCourses.push(mappedCourse);
+          }
+        }
+        setItem(KEYS.COURSES, mergedCourses);
       }
 
       if (subsRes?.success && Array.isArray(subsRes.submissions)) {
