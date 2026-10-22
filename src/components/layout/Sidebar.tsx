@@ -22,6 +22,7 @@ import {
   FileSpreadsheet,
   X,
   GraduationCap,
+  Mail,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -55,6 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'my-submissions', label: 'My Submissions', icon: UploadCloud },
     { id: 'grades', label: 'Grades & GPA', icon: Award },
     { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'contact-authority', label: 'Contact Authority', icon: Mail },
     { id: 'profile', label: 'My Profile', icon: UserIcon },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -68,6 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'grading', label: 'Grading Hub', icon: CheckSquare },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'contact-authority', label: 'Contact Authority', icon: Mail },
     { id: 'profile', label: 'Profile', icon: UserIcon },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -82,6 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'reports', label: 'System Reports', icon: FileSpreadsheet },
     { id: 'audit-logs', label: 'Audit Logs', icon: ScrollText },
     { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'contact-authority', label: 'Contact Authority', icon: Mail },
     { id: 'profile', label: 'Admin Profile', icon: UserIcon },
     { id: 'settings', label: 'System Settings', icon: Settings },
   ];

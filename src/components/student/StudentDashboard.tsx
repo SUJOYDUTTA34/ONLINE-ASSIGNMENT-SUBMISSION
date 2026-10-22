@@ -14,13 +14,16 @@ import {
   ArrowRight,
   UploadCloud,
   Calendar,
+  Eye,
   BellRing,
   BookOpen,
   Sparkles,
-  Trash2,
+  Search,
+  Receipt,
+  X,
+  FileCheck,
 } from 'lucide-react';
-import { useNotifications } from '../../context/NotificationContext';
-import { playAudioEffect } from '../../lib/audio';
+import { ReceiptModal } from '../common/ReceiptModal';
 
 interface StudentDashboardProps {
   onSelectAssignment: (assignment: Assignment) => void;
@@ -40,14 +43,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   onViewCoursesTab,
 }) => {
   const { user } = useAuth();
-  const { showToast } = useNotifications();
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [submissionToDelete, setSubmissionToDelete] = useState<{
-    id: string;
-    assignmentTitle: string;
-    fileName: string;
-  } | null>(null);
-  const [asgToDelete, setAsgToDelete] = useState<Assignment | null>(null);
+  const [submissionSearchQuery, setSubmissionSearchQuery] = useState('');
+  const [selectedReceiptSubmission, setSelectedReceiptSubmission] = useState<Submission | null>(null);
 
   if (!user) return null;
 
@@ -60,57 +57,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   const studentSubmissions = storage.getSubmissions().filter((s) => s.studentId === user.id);
 
-  const handleDeleteSubmission = (subId: string, asgTitle: string, fileName: string) => {
-    setSubmissionToDelete({ id: subId, assignmentTitle: asgTitle, fileName });
-  };
-
-  const confirmDeleteSubmission = () => {
-    if (!submissionToDelete) return;
-    try {
-      storage.deleteSubmission(submissionToDelete.id, user);
-      playAudioEffect('warning');
-      showToast({
-        type: 'success',
-        title: 'Submission Deleted',
-        message: `Your submission for "${submissionToDelete.assignmentTitle}" was deleted successfully.`,
-      });
-      storage.addNotification({
-        userId: user.id,
-        title: 'Submission Deleted',
-        message: `You removed your submission for "${submissionToDelete.assignmentTitle}". You can submit a new file anytime before the deadline.`,
-        type: 'system',
-      });
-      setSubmissionToDelete(null);
-      setRefreshKey((k) => k + 1);
-    } catch (err: any) {
-      showToast({
-        type: 'error',
-        title: 'Delete Failed',
-        message: err.message || 'Could not delete submission.',
-      });
-    }
-  };
-
-  const confirmDeleteAssignment = () => {
-    if (!asgToDelete) return;
-    try {
-      storage.deleteAssignment(asgToDelete.id, user);
-      playAudioEffect('warning');
-      showToast({
-        type: 'success',
-        title: 'Assignment Deleted',
-        message: `Assignment "${asgToDelete.title}" was removed successfully.`,
-      });
-      setAsgToDelete(null);
-      setRefreshKey((k) => k + 1);
-    } catch (err: any) {
-      showToast({
-        type: 'error',
-        title: 'Delete Failed',
-        message: err.message || 'Could not delete assignment.',
-      });
-    }
-  };
+  // Filtered submissions based on search bar query (assignment title or receipt ID)
+  const filteredSubmissions = studentSubmissions.filter((sub) => {
+    const q = submissionSearchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      (sub.assignmentTitle || '').toLowerCase().includes(q) ||
+      (sub.receiptId || '').toLowerCase().includes(q) ||
+      (sub.courseCode || '').toLowerCase().includes(q) ||
+      (sub.courseName || '').toLowerCase().includes(q) ||
+      (sub.fileName || '').toLowerCase().includes(q)
+    );
+  });
 
   // Compute Stats
   const totalAssignments = allAssignments.length;
@@ -354,191 +312,163 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         />
       </motion.div>
 
-      {/* 1. Full-Width Upcoming Assignments Table Card (No Horizontal Scroll) */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.2 }}
-        className="w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden"
-      >
-        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-              Upcoming & Active Assignments
-            </h2>
-            <p className="text-xs text-slate-400">
-              Track your due dates and submission statuses
-            </p>
+      {/* Grid: Upcoming Assignments & Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left 2 Cols: Upcoming Assignments Table */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+          className="lg:col-span-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden"
+        >
+          <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                Upcoming & Active Assignments
+              </h2>
+              <p className="text-xs text-slate-400">
+                Track your due dates and submission statuses
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                id="dashboard-table-submit-btn"
+                onClick={onOpenQuickSubmit}
+                className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+              >
+                <UploadCloud className="w-3.5 h-3.5" />
+                Submit Assignment
+              </button>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
+                {allAssignments.length} Assignments
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              id="dashboard-table-submit-btn"
-              onClick={onOpenQuickSubmit}
-              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-            >
-              <UploadCloud className="w-3.5 h-3.5" />
-              Submit Assignment
-            </button>
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
-              {allAssignments.length} Assignments
-            </span>
-          </div>
-        </div>
 
-        <div className="overflow-x-auto lg:overflow-x-visible">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-100 dark:border-slate-800">
-              <tr>
-                <th className="py-3 px-5">Assignment</th>
-                <th className="py-3 px-4">Course</th>
-                <th className="py-3 px-4">Due Date</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-5 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-              {allAssignments.length === 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-100 dark:border-slate-800">
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-slate-400">
-                    {enrolledCourses.length === 0 ? (
-                      <div className="space-y-2">
-                        <p className="font-semibold text-slate-700 dark:text-slate-300">No Enrolled Courses Found</p>
-                        <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
-                          You have not added any subjects yet. Click &quot;My Courses&quot; &rarr; &quot;Add New Course&quot; to begin.
-                        </p>
-                      </div>
-                    ) : (
-                      'No active assignments posted for your enrolled courses.'
-                    )}
-                  </td>
+                  <th className="py-3 px-4">Assignment</th>
+                  <th className="py-3 px-4">Course</th>
+                  <th className="py-3 px-4">Due Date</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Action</th>
                 </tr>
-              ) : (
-                allAssignments.map((asg) => {
-                  const submission = studentSubmissions.find((s) => s.assignmentId === asg.id);
-                  const isOverdue = new Date() > new Date(asg.dueAt);
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                {allAssignments.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-slate-400">
+                      {enrolledCourses.length === 0 ? (
+                        <div className="space-y-2">
+                          <p className="font-semibold text-slate-700 dark:text-slate-300">No Enrolled Courses Found</p>
+                          <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                            You have not added any subjects yet. Click &quot;My Courses&quot; &rarr; &quot;Add New Course&quot; to begin.
+                          </p>
+                        </div>
+                      ) : (
+                        'No active assignments posted for your enrolled courses.'
+                      )}
+                    </td>
+                  </tr>
+                ) : (
+                  allAssignments.map((asg) => {
+                    const submission = studentSubmissions.find((s) => s.assignmentId === asg.id);
+                    const isOverdue = new Date() > new Date(asg.dueAt);
 
-                  let statusBadge = (
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                      Not Started
-                    </span>
-                  );
+                    let statusBadge = (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        Not Started
+                      </span>
+                    );
 
-                  if (submission) {
-                    if (submission.status === 'graded') {
+                    if (submission) {
+                      if (submission.status === 'graded') {
+                        statusBadge = (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                            Graded ({submission.grade?.marksObtained}/{asg.maxMarks})
+                          </span>
+                        );
+                      } else if (submission.isLate) {
+                        statusBadge = (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
+                            Submitted Late
+                          </span>
+                        );
+                      } else {
+                        statusBadge = (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                            Submitted
+                          </span>
+                        );
+                      }
+                    } else if (isOverdue) {
                       statusBadge = (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 whitespace-nowrap">
-                          Graded ({submission.grade?.marksObtained}/{asg.maxMarks})
-                        </span>
-                      );
-                    } else if (submission.isLate) {
-                      statusBadge = (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 whitespace-nowrap">
-                          Submitted Late
-                        </span>
-                      );
-                    } else {
-                      statusBadge = (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
-                          Submitted
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300">
+                          Past Due
                         </span>
                       );
                     }
-                  } else if (isOverdue) {
-                    statusBadge = (
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 whitespace-nowrap">
-                        Past Due
-                      </span>
-                    );
-                  }
 
-                  return (
-                    <tr
-                      key={asg.id}
-                      className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
-                    >
-                      <td className="py-3.5 px-5">
-                        <p className="font-semibold text-slate-900 dark:text-white truncate max-w-[260px] sm:max-w-[340px]">
-                          {asg.title}
-                        </p>
-                        <p className="text-[10px] text-slate-400">Max: {asg.maxMarks} marks</p>
-                      </td>
+                    return (
+                      <tr
+                        key={asg.id}
+                        className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+                      >
+                        <td className="py-3.5 px-4">
+                          <p className="font-semibold text-slate-900 dark:text-white truncate max-w-[200px]">
+                            {asg.title}
+                          </p>
+                          <p className="text-[10px] text-slate-400">Max: {asg.maxMarks} marks</p>
+                        </td>
 
-                      <td className="py-3.5 px-4 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-mono">
+                        <td className="py-3.5 px-4 font-medium text-slate-700 dark:text-slate-300">
                           {asg.courseCode}
-                        </span>
-                      </td>
+                        </td>
 
-                      <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                        {new Date(asg.dueAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                      </td>
+                        <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
+                          {new Date(asg.dueAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                        </td>
 
-                      <td className="py-3.5 px-4 whitespace-nowrap">{statusBadge}</td>
+                        <td className="py-3.5 px-4">{statusBadge}</td>
 
-                      <td className="py-3.5 px-5 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-2">
-                          <motion.button
-                            whileHover={{ scale: 1.03 }}
-                            whileTap={{ scale: 0.97 }}
-                            onClick={() => onSelectAssignment(asg)}
-                            className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold cursor-pointer text-xs"
-                          >
-                            View
-                          </motion.button>
-
-                          {(!submission || asg.allowResubmission) && (
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
                             <motion.button
-                              whileHover={{ scale: 1.03 }}
-                              whileTap={{ scale: 0.97 }}
-                              onClick={() => {
-                                onOpenSubmitModal(asg);
-                              }}
-                              className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => onSelectAssignment(asg)}
+                              className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium cursor-pointer"
                             >
-                              <UploadCloud className="w-3.5 h-3.5" />
-                              <span>{submission ? 'Resubmit' : 'Submit'}</span>
+                              View
                             </motion.button>
-                          )}
 
-                          {submission && (
-                            <motion.button
-                              whileHover={{ scale: 1.03 }}
-                              whileTap={{ scale: 0.97 }}
-                              id={`delete-sub-btn-${submission.id}`}
-                              onClick={() => handleDeleteSubmission(submission.id, asg.title, submission.fileName)}
-                              className="px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/60 font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-                              title="Delete your uploaded submission file"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                              <span>Delete Sub</span>
-                            </motion.button>
-                          )}
+                            {(!submission || asg.allowResubmission) && (
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => {
+                                  onOpenSubmitModal(asg);
+                                  document.getElementById('assignmentFile')?.click();
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1 shadow-sm cursor-pointer min-h-[36px]"
+                              >
+                                <span>📄 {submission ? 'Resubmit' : 'Submit'}</span>
+                              </motion.button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
 
-                          <motion.button
-                            whileHover={{ scale: 1.03 }}
-                            whileTap={{ scale: 0.97 }}
-                            id={`delete-asg-btn-${asg.id}`}
-                            onClick={() => setAsgToDelete(asg)}
-                            className="px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50/70 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-                            title="Delete / Remove this assignment"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                            <span>Delete</span>
-                          </motion.button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </motion.div>
-
-      {/* 2. Grid Below: Recent Activity & Academic Deadlines */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activity & Real-time Alerts */}
+        {/* Right 1 Col: Recent Activity & Notifications */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
@@ -579,178 +509,190 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             )}
           </div>
         </motion.div>
+      </div>
 
-        {/* Quick Academic Actions & Portal Deadlines Summary */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
-          className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs p-5 space-y-4 flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+      {/* Dedicated Section: Recent Submissions & Digital Receipt Search */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.3 }}
+        id="student-dashboard-submissions-search-section"
+        className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden"
+      >
+        {/* Section Header & Search Input */}
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-indigo-500" />
+              <FileCheck className="w-4 h-4 text-emerald-500" />
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                Upcoming Deadlines & Actions
+                Recent Submissions & Digital Receipts
               </h2>
             </div>
-            <span className="text-[10px] text-slate-400 font-medium">Spring 2026 Term</span>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Instantly search coursework submissions by assignment title, receipt ID, or course code
+            </p>
           </div>
 
-          <div className="space-y-3">
-            <div className="p-3.5 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border border-blue-100 dark:border-blue-900/50 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-blue-900 dark:text-blue-200">
-                  Total Active Coursework
-                </p>
-                <p className="text-[11px] text-blue-700 dark:text-blue-400 mt-0.5">
-                  {pendingAssignments} pending assignments needing submission
-                </p>
-              </div>
-              <button
-                onClick={onOpenQuickSubmit}
-                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors shrink-0"
-              >
-                <UploadCloud className="w-3.5 h-3.5" />
-                <span>Submit Work</span>
-              </button>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  Course Catalog & Materials
-                </p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  Access course outlines, syllabi, and study notes
-                </p>
-              </div>
-              {onViewCoursesTab && (
+          <div className="flex items-center gap-3">
+            {/* Search Input Bar */}
+            <div className="relative min-w-[260px] sm:min-w-[320px]">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                id="submission-search-input"
+                type="text"
+                value={submissionSearchQuery}
+                onChange={(e) => setSubmissionSearchQuery(e.target.value)}
+                placeholder="Filter by title or receipt ID (e.g. REC-)..."
+                className="w-full pl-9 pr-8 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
+              {submissionSearchQuery && (
                 <button
-                  onClick={onViewCoursesTab}
-                  className="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shrink-0"
+                  type="button"
+                  onClick={() => setSubmissionSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
+                  title="Clear search"
                 >
-                  <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>My Courses</span>
+                  <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
-          </div>
-        </motion.div>
-      </div>
 
-      {/* Confirmation Dialog for Deleting Submission */}
-      {submissionToDelete && (
-        <div
-          id="delete-submission-modal"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs"
-        >
-          <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Delete Assignment Submission?
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  This action will remove your uploaded coursework and reset the assignment status.
-                </p>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 mb-5 space-y-1.5 text-xs">
-              <div className="flex justify-between text-slate-500 dark:text-slate-400">
-                <span>Assignment:</span>
-                <span className="font-semibold text-slate-900 dark:text-white truncate max-w-[220px]">
-                  {submissionToDelete.assignmentTitle}
-                </span>
-              </div>
-              <div className="flex justify-between text-slate-500 dark:text-slate-400">
-                <span>Uploaded File:</span>
-                <span className="font-semibold text-slate-900 dark:text-white truncate max-w-[220px]">
-                  {submissionToDelete.fileName}
-                </span>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-600 dark:text-slate-300 mb-5 leading-relaxed">
-              Are you sure you want to delete this submission? You will be able to submit a new file before the deadline.
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setSubmissionToDelete(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                id="confirm-delete-submission-btn"
-                type="button"
-                onClick={confirmDeleteSubmission}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-600/20 cursor-pointer"
-              >
-                Delete Submission
-              </button>
-            </div>
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg whitespace-nowrap font-mono tabular-nums">
+              {filteredSubmissions.length} of {studentSubmissions.length}
+            </span>
           </div>
         </div>
-      )}
 
-      {/* Confirmation Dialog for Deleting Assignment */}
-      {asgToDelete && (
-        <div
-          id="delete-asg-modal"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200"
-        >
-          <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Delete Assignment?
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Remove assignment &ldquo;{asgToDelete.title}&rdquo; ({asgToDelete.courseCode}) from your dashboard.
-                </p>
-              </div>
-            </div>
+        {/* Results Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-100 dark:border-slate-800">
+              <tr>
+                <th className="py-3 px-4">Assignment & Course</th>
+                <th className="py-3 px-4">Receipt ID</th>
+                <th className="py-3 px-4">File Name</th>
+                <th className="py-3 px-4">Submitted Date</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4 text-right">Receipt Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+              {filteredSubmissions.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                    {submissionSearchQuery ? (
+                      <div className="space-y-2">
+                        <p className="font-semibold text-slate-700 dark:text-slate-300">
+                          No submissions matching &ldquo;{submissionSearchQuery}&rdquo;
+                        </p>
+                        <p className="text-[11px] text-slate-400">
+                          Check for spelling errors or try searching with a receipt prefix (e.g. REC).
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setSubmissionSearchQuery('')}
+                          className="mt-2 px-3 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                        >
+                          Clear Search
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="font-semibold text-slate-700 dark:text-slate-300">
+                          No Coursework Submissions Yet
+                        </p>
+                        <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                          When you submit assignments, your verifiable digital receipts and file records will appear here.
+                        </p>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ) : (
+                filteredSubmissions.map((sub) => {
+                  let statusBadge = (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                      On-Time
+                    </span>
+                  );
 
-            <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 text-xs leading-relaxed space-y-1 mb-5">
-              <p className="font-semibold flex items-center gap-1.5">
-                <span>⚠️</span> Warning: Permanent Action
-              </p>
-              <p className="text-[11px] opacity-90">
-                Deleting this assignment will also remove any student submissions associated with it.
-              </p>
-            </div>
+                  if (sub.status === 'graded') {
+                    statusBadge = (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                        Graded ({sub.grade?.marksObtained || 0} pts)
+                      </span>
+                    );
+                  } else if (sub.isLate) {
+                    statusBadge = (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
+                        Late ({sub.lateDays || 1}d)
+                      </span>
+                    );
+                  }
 
-            <div className="flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setAsgToDelete(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                id="confirm-delete-asg-btn"
-                type="button"
-                onClick={confirmDeleteAssignment}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-600/20 cursor-pointer flex items-center gap-1.5"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Yes, Delete Assignment</span>
-              </button>
-            </div>
-          </div>
+                  return (
+                    <tr
+                      key={sub.id}
+                      className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+                    >
+                      <td className="py-3.5 px-4">
+                        <p className="font-semibold text-slate-900 dark:text-white truncate max-w-[220px]">
+                          {sub.assignmentTitle}
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
+                          <span className="font-bold text-blue-600 dark:text-blue-400">{sub.courseCode}</span>
+                          <span>·</span>
+                          <span className="truncate max-w-[140px]">{sub.courseName}</span>
+                        </p>
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800/80 px-2 py-1 rounded-md border border-slate-200/60 dark:border-slate-700">
+                          {sub.receiptId}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-400 truncate max-w-[150px]">
+                        {sub.fileName}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400 tabular-nums">
+                        {new Date(sub.submittedAt).toLocaleString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+
+                      <td className="py-3.5 px-4">{statusBadge}</td>
+
+                      <td className="py-3.5 px-4 text-right">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setSelectedReceiptSubmission(sub)}
+                          className="px-2.5 py-1.5 rounded-lg border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 font-semibold text-xs flex items-center gap-1.5 ml-auto cursor-pointer"
+                        >
+                          <Receipt className="w-3.5 h-3.5" />
+                          View Receipt
+                        </motion.button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </motion.div>
+
+      {/* Interactive Receipt Modal */}
+      <ReceiptModal
+        submission={selectedReceiptSubmission}
+        isOpen={!!selectedReceiptSubmission}
+        onClose={() => setSelectedReceiptSubmission(null)}
+      />
     </div>
   );
 };

@@ -9,6 +9,7 @@ import { ProgressBar } from '@/components/ui/progress-bar';
 import { SonarGrid } from '@/components/ui/sonar-grid';
 import webpageLogo from '../../assets/images/webpage_logo_1791176307030.jpg';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { ContactAuthorityView } from '../common/ContactAuthorityView';
 import {
   GraduationCap,
   UploadCloud,
@@ -154,6 +155,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
             </a>
             <a href="#statistics" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               Statistics
+            </a>
+            <a href="#contact-authority" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-semibold text-blue-600 dark:text-blue-400">
+              Contact Authority
             </a>
             <a href="#about" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               About
@@ -733,6 +737,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
         </div>
       </section>
 
+      {/* Contact Authority Section */}
+      <section id="contact-authority" className="py-20 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200/80 dark:border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-center max-w-2xl mx-auto mb-12"
+          >
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-xs font-bold mb-3 border border-blue-200 dark:border-blue-800/80">
+              Institutional Grievance & Administrative Redressal
+            </div>
+            <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              Contact Authority Directly
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+              Have academic disputes, late submission waiver petitions, or technical inquiries? Communicate directly with the Office of the Registrar and Grievance Cell.
+            </p>
+          </motion.div>
+
+          <ContactAuthorityView isEmbeddedInLanding={true} />
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="relative bg-slate-900 text-slate-400 text-xs py-12 border-t border-slate-800 overflow-hidden">
         <SonarGrid
@@ -796,8 +825,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-4 text-[11px]">
           <p>© 2026 Online Assignment Submission System. All rights reserved.</p>
-          <div className="flex items-center gap-4">
-            <p className="text-slate-500">College Registrar & Information Technology Services</p>
+          <div className="flex items-center gap-1.5 font-medium text-slate-400">
+            <span>made by <strong className="text-white font-semibold tracking-wide">⁓SD</strong></span>
+            <span className="inline-block text-red-500 animate-pulse text-sm" role="img" aria-label="love">❤️</span>
           </div>
         </div>
       </footer>
