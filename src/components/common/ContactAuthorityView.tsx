@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
+import { storage } from '../../services/storage';
 import {
   Mail,
   Building2,
@@ -36,7 +37,7 @@ export const ContactAuthorityView: React.FC<ContactAuthorityViewProps> = ({
   isEmbeddedInLanding = false,
 }) => {
   const { user } = useAuth();
-  const { showToast, addNotification } = useNotifications();
+  const { showToast } = useNotifications();
 
   const [fullName, setFullName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -52,7 +53,7 @@ export const ContactAuthorityView: React.FC<ContactAuthorityViewProps> = ({
   const handleCopyEmail = (address: string) => {
     navigator.clipboard.writeText(address);
     setCopiedEmail(address);
-    showToast('Email address copied to clipboard', 'info');
+    showToast({ message: 'Email address copied to clipboard', type: 'info' });
     setTimeout(() => setCopiedEmail(null), 2500);
   };
 
@@ -60,7 +61,7 @@ export const ContactAuthorityView: React.FC<ContactAuthorityViewProps> = ({
     e.preventDefault();
 
     if (!fullName.trim() || !email.trim() || !subject.trim() || !message.trim()) {
-      showToast('Please fill in all required fields.', 'error');
+      showToast({ message: 'Please fill in all required fields.', type: 'error' });
       return;
     }
 
@@ -72,14 +73,15 @@ export const ContactAuthorityView: React.FC<ContactAuthorityViewProps> = ({
       setSubmittedRefId(trackingCode);
       setIsSubmitting(false);
 
-      showToast(`Inquiry sent to Registrar. Reference: ${trackingCode}`, 'success');
+      showToast({ message: `Inquiry sent to Registrar. Reference: ${trackingCode}`, type: 'success' });
 
       if (user) {
-        addNotification(
-          `Grievance Ticket Registered (${trackingCode})`,
-          `Your message regarding "${subject}" was forwarded to the Institutional Registrar and Grievance Cell. Response SLA: 24-48 business hours.`,
-          'info'
-        );
+        storage.addNotification({
+          userId: user.id,
+          title: `Grievance Ticket Registered (${trackingCode})`,
+          message: `Your message regarding "${subject}" was forwarded to the Institutional Registrar and Grievance Cell. Response SLA: 24-48 business hours.`,
+          type: 'system',
+        });
       }
     }, 700);
   };
