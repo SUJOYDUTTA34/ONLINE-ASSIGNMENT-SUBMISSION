@@ -35,6 +35,7 @@ import { SystemReportsView } from '../admin/SystemReportsView';
 import { UserProfileView } from '../common/UserProfileView';
 import { SettingsView } from '../common/SettingsView';
 import { NotificationsView } from '../common/NotificationsView';
+import { ContactAuthorityView } from '../common/ContactAuthorityView';
 
 import { Assignment, Submission } from '../../types';
 
@@ -84,6 +85,10 @@ export const Layout: React.FC<LayoutProps> = ({ onLogoutToLanding }) => {
   };
 
   const renderContent = () => {
+    if (activeTab === 'contact-authority') {
+      return <ContactAuthorityView />;
+    }
+
     // STUDENT ROLE
     if (user.role === 'student') {
       switch (activeTab) {
@@ -293,18 +298,33 @@ export const Layout: React.FC<LayoutProps> = ({ onLogoutToLanding }) => {
         />
 
         {/* Main Content Area */}
-        <main className="flex-1 min-w-0 pb-12">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 12, scale: 0.995 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.995 }}
-              transition={{ duration: 0.22, ease: 'easeOut' }}
-            >
-              {renderContent()}
-            </motion.div>
-          </AnimatePresence>
+        <main className="flex-1 min-w-0 flex flex-col min-h-[calc(100vh-6rem)]">
+          <div className="flex-1 pb-6">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 12, scale: 0.995 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.995 }}
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+              >
+                {renderContent()}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Portal Footer Bar */}
+          <footer className="mt-auto pt-6 pb-6 border-t border-slate-200/80 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Scholaris Portal</span>
+              <span className="text-slate-300 dark:text-slate-700">·</span>
+              <span>Online Assignment & Assessment System</span>
+            </div>
+            <div className="flex items-center gap-1.5 font-medium ml-auto">
+              <span>made by <strong className="text-slate-800 dark:text-slate-200 font-semibold tracking-wide">⁓SD</strong></span>
+              <span className="inline-block text-red-500 animate-pulse text-sm" role="img" aria-label="love">❤️</span>
+            </div>
+          </footer>
         </main>
       </div>
 
