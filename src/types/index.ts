@@ -170,7 +170,6 @@ export interface Submission {
   fileType: string;
   fileData?: string;
   fileMetadata?: FileUploadMetadata;
-  r2Url?: string;
   comments?: string;
   submittedAt: string;
   isLate: boolean;

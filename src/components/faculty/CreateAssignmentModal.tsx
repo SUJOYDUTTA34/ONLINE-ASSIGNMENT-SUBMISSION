@@ -156,57 +156,29 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
 
     try {
       const assignmentId = initialAssignment?.id || `asg-${Date.now()}`;
-      let r2FileUrl = initialAssignment?.fileUrl || '';
-      let r2FileName = initialAssignment?.fileName || '';
-
-      // Upload attached file or photo to Cloudflare R2 and sync with Cloudflare D1
-      const formData = new FormData();
-      if (attachedFile) {
-        formData.append('file', attachedFile);
-      }
-      formData.append('id', assignmentId);
-      formData.append('courseCode', selectedCourse.code || selectedCourse.courseCode || '');
-      formData.append('courseName', selectedCourse.title || selectedCourse.courseName || '');
-      formData.append('title', title.trim());
-      formData.append('description', description.trim());
-      formData.append('instructions', instructions.trim());
-      formData.append('dueAt', new Date(dueAt).toISOString());
-      formData.append('maxMarks', String(maxMarks));
-      formData.append('facultyId', user.id);
-      formData.append('facultyName', user.name);
-      formData.append('status', status);
-      formData.append('allowedFileTypes', JSON.stringify(allowedFileTypes));
-      formData.append('maxFileSizeMb', String(maxFileSizeMb));
-      formData.append('allowLateSubmission', String(allowLateSubmission));
-      formData.append('latePenaltyPercentPerDay', String(latePenaltyPercentPerDay));
-      formData.append('allowResubmission', String(allowResubmission));
-      formData.append('maxResubmissions', String(maxResubmissions));
-
-      try {
-        const apiRes = await fetch('/api/assignments', {
-          method: 'POST',
-          body: formData,
-        });
-        if (apiRes.ok) {
-          const apiData = await apiRes.json().catch(() => ({}));
-          if (apiData.fileUrl) {
-            r2FileUrl = apiData.fileUrl;
-            r2FileName = apiData.fileName || attachedFile?.name || '';
-          }
-        }
-      } catch (apiErr) {
-        console.warn('Backend D1 sync notice:', apiErr);
-      }
+      let fileUrl = initialAssignment?.fileUrl || '';
+      let fileName = initialAssignment?.fileName || '';
 
       let updatedResources = [...resources];
-      if (attachedFile && r2FileUrl) {
-        updatedResources.push({
-          id: `res-${Date.now()}`,
-          name: attachedFile.name,
-          size: `${(attachedFile.size / (1024 * 1024)).toFixed(2)} MB`,
-          type: attachedFile.type || 'application/octet-stream',
-          url: r2FileUrl,
+      if (attachedFile) {
+        fileName = attachedFile.name;
+        const reader = new FileReader();
+        const dataUrl = await new Promise<string>((resolve) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(attachedFile);
         });
+
+        if (dataUrl) {
+          fileUrl = dataUrl;
+          updatedResources.push({
+            id: `res-${Date.now()}`,
+            name: attachedFile.name,
+            size: `${(attachedFile.size / (1024 * 1024)).toFixed(2)} MB`,
+            type: attachedFile.type || 'application/octet-stream',
+            url: dataUrl,
+          });
+        }
       }
 
       const fullAssignment: Assignment = {
@@ -231,8 +203,8 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         maxResubmissions: allowResubmission ? Number(maxResubmissions) : 1,
         status,
         resources: updatedResources,
-        fileUrl: r2FileUrl || undefined,
-        fileName: r2FileName || undefined,
+        fileUrl: fileUrl || undefined,
+        fileName: fileName || undefined,
       };
 
       let saved: Assignment;
@@ -241,14 +213,14 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         showToast({
           type: 'success',
           title: 'Assignment Updated',
-          message: `"${saved.title}" has been updated and synced with Cloudflare D1 & R2.`,
+          message: `"${saved.title}" has been updated.`,
         });
       } else {
         saved = storage.saveAssignment(fullAssignment, user);
         showToast({
           type: 'success',
           title: 'Assignment Published',
-          message: `"${saved.title}" is now active and stored in Cloudflare D1 & R2.`,
+          message: `"${saved.title}" is now active and published.`,
         });
       }
 
@@ -512,12 +484,12 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
             </div>
           </div>
 
-          {/* Attach Question Paper / Photo / Resource (Cloudflare R2) */}
+          {/* Attach Question Paper / Photo / Resource */}
           <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/50 space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
                 <UploadCloud className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span>Attach Assignment File / Photo (Stored in Cloudflare R2)</span>
+                <span>Attach Assignment File / Resource</span>
               </label>
               {attachedFile && (
                 <button
@@ -530,7 +502,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
               )}
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Attach question sheet, diagram, rubric, or assignment photo. It will be uploaded directly to Cloudflare R2 bucket.
+              Attach question sheet, diagram, rubric, or assignment coursework file.
             </p>
             <input
               type="file"

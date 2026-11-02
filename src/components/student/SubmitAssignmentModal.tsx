@@ -288,12 +288,11 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
 
       let storedFilename = `submission_${assignment.id}_${user.id}_${Date.now()}.${effectiveFile.name.split('.').pop()}`;
       let serverMetadata: any = null;
-      let serverR2Url: string | undefined = undefined;
       let serverSubmissionId: string | undefined = undefined;
       let serverReceiptId: string | undefined = undefined;
 
       setUploadProgress(40);
-      setStatusText('Validating security integrity & syncing with Cloudflare R2...');
+      setStatusText('Validating security integrity & verifying file hash...');
 
       const formData = new FormData();
       formData.append('assignmentFile', effectiveFile);
@@ -314,7 +313,7 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
       formData.append('allowedTypes', JSON.stringify([]));
 
       setUploadProgress(65);
-      setStatusText('Streaming file payload to Cloudflare R2 storage...');
+      setStatusText('Streaming file payload to secure vault storage...');
 
       try {
         const response = await fetch(`/api/assignments/${assignment.id}/submit`, {
@@ -335,9 +334,6 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
           }
           if (resData.metadata) {
             serverMetadata = resData.metadata;
-          }
-          if (resData.r2Url) {
-            serverR2Url = resData.r2Url;
           }
           if (resData.submissionId) {
             serverSubmissionId = resData.submissionId;
@@ -369,7 +365,6 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
           fileKey: storedFilename,
           storedFileName: storedFilename,
           fileMetadata: serverMetadata,
-          r2Url: serverR2Url,
           fileSize:
             serverMetadata?.fileSizeFormatted ||
             `${(effectiveFile.size / (1024 * 1024)).toFixed(2)} MB`,
@@ -498,7 +493,7 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
                     Assignment Submitted Successfully
                   </h2>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 max-w-sm mx-auto">
-                    Your coursework has been recorded with a digital verifiable receipt and synced to Cloudflare R2 storage.
+                    Your coursework has been recorded with a digital verifiable receipt and securely stored.
                   </p>
                 </div>
 
@@ -579,7 +574,7 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
                         </span>
                         <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                          R2 Encrypted & Isolated
+                          Encrypted & Isolated Vault
                         </span>
                       </div>
                       {submittedFile.sha256Hash && (
@@ -629,7 +624,7 @@ export const SubmitAssignmentModal: React.FC<SubmitAssignmentModalProps> = ({
                     {statusText}
                   </p>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    Securing coursework payload & synchronizing with Cloudflare R2...
+                    Securing coursework payload & storing in private vault...
                   </p>
                 </div>
                 <div className="max-w-xs mx-auto pt-3">

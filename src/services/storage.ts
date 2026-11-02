@@ -324,187 +324,6 @@ export const storage = {
     return undefined;
   },
 
-  syncUsersFromD1(d1Users: any[]): User[] {
-    if (!Array.isArray(d1Users)) return getItem<User[]>(KEYS.USERS, INITIAL_USERS);
-    const currentUsers = getItem<User[]>(KEYS.USERS, INITIAL_USERS);
-    const d1IdSet = new Set(d1Users.map((u) => u.id));
-    const d1EmailSet = new Set(d1Users.map((u) => (u.email || "").toLowerCase()));
-
-    const merged = [...currentUsers];
-    for (const d1User of d1Users) {
-      const idx = merged.findIndex(
-        (u) => u.id === d1User.id || (u.email && u.email.toLowerCase() === (d1User.email || "").toLowerCase())
-      );
-      const formatted: User = {
-        id: d1User.id,
-        name: d1User.name || "User",
-        email: d1User.email || "",
-        role: d1User.role || "student",
-        departmentId: d1User.department_id || d1User.departmentId || "dept-1",
-        departmentName: d1User.department_name || d1User.departmentName || d1User.department || "Computer Science",
-        studentIdNumber: d1User.student_id_number || d1User.studentIdNumber,
-        employeeIdNumber: d1User.employee_id_number || d1User.employeeIdNumber,
-        avatarUrl:
-          d1User.avatar_url ||
-          d1User.avatarUrl ||
-          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80",
-        coverUrl: d1User.cover_url || d1User.coverUrl,
-        phone: d1User.phone || "",
-        status: d1User.status || "active",
-        semester: d1User.semester ? Number(d1User.semester) : 1,
-        program: d1User.program || (d1User.role === "student" ? "Computer Science" : "Faculty"),
-        institution: d1User.institution || "Midnapore College Autonomous",
-        bio: d1User.bio || "",
-        createdAt: d1User.created_at || d1User.createdAt || new Date().toISOString(),
-      };
-
-      if (idx >= 0) {
-        merged[idx] = { ...merged[idx], ...formatted };
-      } else {
-        merged.push(formatted);
-      }
-    }
-
-    // Keep all faculty/admin, but prune students that were explicitly deleted from D1
-    const filtered = merged.filter((u) => {
-      if (u.role !== "student") return true;
-      return d1IdSet.has(u.id) || d1EmailSet.has((u.email || "").toLowerCase());
-    });
-
-    setItem(KEYS.USERS, filtered);
-    return filtered;
-  },
-
-  async syncWithD1(): Promise<void> {
-    try {
-      const [usersRes, subsRes, asgsRes, coursesRes] = await Promise.all([
-        fetch("/api/users").then((r) => r.json()).catch(() => null),
-        fetch("/api/submissions").then((r) => r.json()).catch(() => null),
-        fetch("/api/assignments").then((r) => r.json()).catch(() => null),
-        fetch("/api/courses").then((r) => r.json()).catch(() => null),
-      ]);
-
-      if (usersRes?.success && Array.isArray(usersRes.users)) {
-        this.syncUsersFromD1(usersRes.users);
-      }
-
-      if (coursesRes?.success && Array.isArray(coursesRes.courses)) {
-        const deletedIds = getItem<string[]>('oass_deleted_course_ids', []);
-        const localCourses = getItem<Course[]>(KEYS.COURSES, INITIAL_COURSES).filter((c) => !deletedIds.includes(c.id));
-        const mergedCourses = [...localCourses];
-        for (const c of coursesRes.courses) {
-          if (deletedIds.includes(c.id)) continue;
-          const idx = mergedCourses.findIndex((lc) => lc.id === c.id || (lc.code && c.code && lc.code.toUpperCase() === c.code.toUpperCase()));
-          const mappedCourse: Course = {
-            id: c.id,
-            code: c.code || c.courseCode,
-            courseCode: c.code || c.courseCode,
-            title: c.title || c.courseName,
-            courseName: c.title || c.courseName,
-            departmentId: c.department_id || c.departmentId || "dept-1",
-            departmentName: c.department_name || c.departmentName || "Computer Science",
-            departmentCode: c.department_code || c.departmentCode || "CS",
-            semester: Number(c.semester || 1),
-            academicYear: c.academic_year || c.academicYear || "2026-2027",
-            facultyId: c.faculty_id || c.facultyId || "",
-            facultyName: c.faculty_name || c.facultyName || "Faculty",
-            description: c.description || "",
-            syllabus: c.syllabus || "",
-            credits: Number(c.credits || 4),
-            status: c.status || "active",
-            enrolledStudentIds: c.enrolled_student_ids || c.enrolledStudentIds || [],
-            documents: c.documents || [],
-          };
-          if (idx >= 0) {
-            mergedCourses[idx] = {
-              ...mergedCourses[idx],
-              ...mappedCourse,
-              documents: mergedCourses[idx].documents?.length ? mergedCourses[idx].documents : mappedCourse.documents,
-            };
-          } else {
-            mergedCourses.push(mappedCourse);
-          }
-        }
-        setItem(KEYS.COURSES, mergedCourses);
-      }
-
-      if (subsRes?.success && Array.isArray(subsRes.submissions)) {
-        const localSubs = getItem<Submission[]>(KEYS.SUBMISSIONS, []);
-        const mergedSubs = [...localSubs];
-        for (const s of subsRes.submissions) {
-          const idx = mergedSubs.findIndex((ls) => ls.id === s.id);
-          const mappedSub: Submission = {
-            id: s.id,
-            assignmentId: s.assignment_id,
-            assignmentTitle: s.assignment_title || "Coursework Submission",
-            courseId: s.course_id || "",
-            courseCode: s.course_code || "CS-301",
-            courseName: s.course_name || "Database Systems",
-            studentId: s.student_id,
-            studentName: s.student_name,
-            studentIdNumber: s.student_id_number,
-            fileName: s.file_name,
-            fileKey: s.file_key,
-            storedFileName: s.file_key,
-            r2Url: s.file_url,
-            fileSize: s.file_size,
-            fileType: s.mime_type,
-            status: s.status || "submitted",
-            version: s.version || 1,
-            receiptId: s.receipt_id,
-            submittedAt: s.submitted_at,
-            gradeScore: s.grade_score,
-            gradeFeedback: s.grade_feedback,
-            gradedBy: s.graded_by,
-            gradedAt: s.graded_at,
-          };
-          if (idx >= 0) mergedSubs[idx] = { ...mergedSubs[idx], ...mappedSub };
-          else mergedSubs.unshift(mappedSub);
-        }
-        setItem(KEYS.SUBMISSIONS, mergedSubs);
-      }
-
-      if (asgsRes?.success && Array.isArray(asgsRes.assignments)) {
-        const deletedAsgIds = getItem<string[]>('oass_deleted_assignment_ids', []);
-        const localAsgs = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS).filter((a) => !deletedAsgIds.includes(a.id));
-        const mergedAsgs = [...localAsgs];
-        for (const a of asgsRes.assignments) {
-          if (deletedAsgIds.includes(a.id)) continue;
-          const idx = mergedAsgs.findIndex((la) => la.id === a.id);
-          const mappedAsg: Assignment = {
-            id: a.id,
-            courseId: a.course_id || "course-1",
-            courseCode: a.course_code || "CS-301",
-            courseName: a.course_name || "General Course",
-            title: a.title,
-            description: a.description,
-            instructions: a.instructions,
-            dueAt: a.due_date,
-            maxMarks: a.max_marks || 100,
-            facultyId: a.created_by,
-            facultyName: a.created_by_name,
-            createdAt: a.created_at,
-            status: a.status || "published",
-            allowedFileTypes: a.allowed_file_types ? a.allowed_file_types.split(",") : ["all"],
-            maxFileSizeMb: a.max_file_size_mb || 100,
-            allowLateSubmission: !!a.allow_late_submission,
-            latePenaltyPercentPerDay: a.late_penalty_percent_per_day || 5,
-            allowResubmission: !!a.allow_resubmission,
-            maxResubmissions: a.max_resubmissions || 3,
-            fileUrl: a.file_url,
-            fileName: a.file_name,
-            resources: [],
-          };
-          if (idx >= 0) mergedAsgs[idx] = { ...mergedAsgs[idx], ...mappedAsg };
-          else mergedAsgs.push(mappedAsg);
-        }
-        setItem(KEYS.ASSIGNMENTS, mergedAsgs);
-      }
-    } catch (e) {
-      console.warn("[Cloudflare D1 Real-time Sync Notice]:", e);
-    }
-  },
-
   /**
    * Secure Credential Verification (Zero Password Exposure)
    */
@@ -554,13 +373,6 @@ export const storage = {
 
     users.unshift(newUser);
     setItem(KEYS.USERS, users);
-
-    // Sync user creation to Cloudflare D1 database
-    fetch('/api/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newUser),
-    }).catch((e) => console.warn('D1 user sync notice:', e));
 
     if (creator) {
       this.addAuditLog({
@@ -615,13 +427,6 @@ export const storage = {
     const updated = { ...users[index], ...safeUpdates };
     users[index] = updated;
     setItem(KEYS.USERS, users);
-
-    // Sync user updates to Cloudflare D1 database
-    fetch('/api/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updated),
-    }).catch((e) => console.warn('D1 user update notice:', e));
 
     this.addAuditLog({
       userId: resolvedUpdater.id,
@@ -678,13 +483,6 @@ export const storage = {
     }
     setItem(KEYS.USERS, users);
 
-    // Sync user save with Cloudflare D1 database
-    fetch('/api/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(safeUser),
-    }).catch((e) => console.warn('D1 user save notice:', e));
-
     return safeUser as User;
   },
 
@@ -703,11 +501,6 @@ export const storage = {
     const users = this.getUsers().filter((u) => u.id !== id);
     setItem(KEYS.USERS, users);
     removeStoredCredential(id);
-
-    // Sync user deletion with Cloudflare D1 database
-    fetch(`/api/users/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    }).catch((e) => console.warn('D1 user delete notice:', e));
 
     if (targetUser) {
       const deletedArchive = getItem<any[]>('oass_deleted_users_v1', []);
@@ -1053,13 +846,6 @@ export const storage = {
     courses.push(newCourse);
     setItem(KEYS.COURSES, courses);
 
-    // Sync course with Cloudflare D1 database
-    fetch('/api/courses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCourse),
-    }).catch((e) => console.warn('D1 course sync notice:', e));
-
     // If student created the course, also update student's enrolledCourseIds in user record
     if (resolvedCreator.role === 'student') {
       const users = this.getUsers();
@@ -1104,13 +890,6 @@ export const storage = {
       };
       existingAssignments.unshift(defaultAssignment);
       setItem(KEYS.ASSIGNMENTS, existingAssignments);
-
-      // Sync auto-created assignment with D1
-      fetch('/api/assignments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(defaultAssignment),
-      }).catch((e) => console.warn('D1 assignment sync notice:', e));
     }
 
     this.addAuditLog({
@@ -1155,13 +934,6 @@ export const storage = {
     courses[index] = updated;
     setItem(KEYS.COURSES, courses);
 
-    // Sync course update with Cloudflare D1
-    fetch('/api/courses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updated),
-    }).catch((e) => console.warn('D1 course update notice:', e));
-
     this.addAuditLog({
       userId: resolvedUpdater.id,
       userName: resolvedUpdater.name,
@@ -1186,13 +958,6 @@ export const storage = {
     }
     setItem(KEYS.COURSES, courses);
 
-    // Sync course save with Cloudflare D1
-    fetch('/api/courses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(course),
-    }).catch((e) => console.warn('D1 course save notice:', e));
-
     return course;
   },
 
@@ -1212,11 +977,6 @@ export const storage = {
       deletedIds.push(id);
       setItem('oass_deleted_course_ids', deletedIds);
     }
-
-    // Sync course deletion with Cloudflare D1
-    fetch(`/api/courses/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    }).catch((e) => console.warn('D1 course delete notice:', e));
 
     // Cascade delete assignments for this course
     const assignments = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS).filter((a) => a.courseId !== id);
@@ -1463,13 +1223,6 @@ export const storage = {
       }
     }
 
-    // Sync assignment with Cloudflare D1
-    fetch('/api/assignments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(sanitizedAssignment),
-    }).catch((e) => console.warn('D1 assignment sync notice:', e));
-
     return sanitizedAssignment;
   },
 
@@ -1483,8 +1236,6 @@ export const storage = {
 
     const assignments = getItem<Assignment[]>(KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS).filter((a) => a.id !== id);
     setItem(KEYS.ASSIGNMENTS, assignments);
-
-    // Persist to deleted assignment IDs so background D1 sync does not resurrect it
     const deletedIds = getItem<string[]>('oass_deleted_assignment_ids', []);
     if (!deletedIds.includes(id)) {
       deletedIds.push(id);
@@ -1508,10 +1259,6 @@ export const storage = {
       });
     }
 
-    // Sync deletion with Cloudflare D1 database
-    fetch(`/api/assignments/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch((e) => {
-      console.warn('Backend assignment deletion sync error:', e);
-    });
 
     return true;
   },
@@ -1722,10 +1469,6 @@ export const storage = {
       });
     }
 
-    // Sync deletion with Cloudflare D1 database
-    fetch(`/api/submissions/${encodeURIComponent(submissionId)}`, { method: 'DELETE' }).catch((e) => {
-      console.warn('Backend submission deletion sync error:', e);
-    });
 
     this.addAuditLog({
       userId: active.id,

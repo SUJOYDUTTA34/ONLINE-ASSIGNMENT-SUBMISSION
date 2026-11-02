@@ -57,19 +57,6 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Live real-time sync with Cloudflare D1 on mount
-  React.useEffect(() => {
-    fetch('/api/courses')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && Array.isArray(data.courses)) {
-          storage.syncWithD1().then(() => {
-            setCourses(storage.getCourses());
-          });
-        }
-      })
-      .catch((e) => console.warn('D1 live courses fetch notice:', e));
-  }, []);
 
   const activeCourseForDocs = selectedCourseForDocs
     ? (storage.getCourseById(selectedCourseForDocs.id) || selectedCourseForDocs)
@@ -172,21 +159,10 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({
         setCourses([...courses, saved]);
       }
 
-      // Immediately sync with Cloudflare D1 database
-      try {
-        await fetch('/api/courses', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(saved),
-        });
-      } catch (d1Err) {
-        console.warn('D1 course sync warning:', d1Err);
-      }
-
       showToast({
         type: 'success',
         title: editingCourse ? 'Course Updated' : 'Course Added',
-        message: `${saved.code} — ${saved.title} synchronized to Cloudflare D1.`,
+        message: `${saved.code} — ${saved.title} has been saved successfully.`,
       });
 
       setModalOpen(false);
@@ -201,11 +177,10 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({
     if (window.confirm(`Are you sure you want to delete course ${code}?`)) {
       storage.deleteCourse(id, currentUser || undefined);
       setCourses(courses.filter((c) => c.id !== id));
-      fetch(`/api/courses/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
       showToast({
         type: 'success',
         title: 'Course Removed',
-        message: `${code} has been deleted and removed from D1.`,
+        message: `${code} has been deleted.`,
       });
     }
   };

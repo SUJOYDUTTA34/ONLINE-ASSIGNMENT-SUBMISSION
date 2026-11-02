@@ -61,10 +61,7 @@ export const StudentAssignments: React.FC<StudentAssignmentsProps> = ({
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
-    storage.syncWithD1().then(() => {
-      setStudentSubmissions(storage.getSubmissions().filter((s) => s.studentId === user?.id));
-      setRefreshTrigger((prev) => prev + 1);
-    }).catch(() => {});
+    setStudentSubmissions(storage.getSubmissions().filter((s) => s.studentId === user?.id));
   }, [user?.id]);
 
   const handleDeleteSubmission = (submissionId: string, title: string) => {
@@ -386,10 +383,10 @@ export const StudentAssignments: React.FC<StudentAssignmentsProps> = ({
 
                     {submission && (
                       <>
-                        {((submission as any).r2Url || (submission as any).fileKey || (submission as any).fileData) && (
+                        {((submission as any).fileKey || (submission as any).fileData) && (
                           <button
                             onClick={() => {
-                              const previewUrl = (submission as any).r2Url || ((submission as any).fileKey ? `/api/files/preview/${(submission as any).fileKey}` : (submission as any).fileData);
+                              const previewUrl = (submission as any).fileKey ? `/api/files/preview/${(submission as any).fileKey}` : (submission as any).fileData;
                               if (previewUrl) window.open(previewUrl, '_blank');
                             }}
                             className="p-1.5 rounded-xl text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"

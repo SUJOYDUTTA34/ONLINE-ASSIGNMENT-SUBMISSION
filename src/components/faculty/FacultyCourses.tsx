@@ -27,12 +27,6 @@ export const FacultyCourses: React.FC = () => {
   const [isAddCourseModalOpen, setIsAddCourseModalOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Live real-time sync with Cloudflare D1
-  React.useEffect(() => {
-    storage.syncWithD1().then(() => {
-      setRefreshTrigger((prev) => prev + 1);
-    }).catch(() => {});
-  }, []);
 
   if (!user) return null;
 

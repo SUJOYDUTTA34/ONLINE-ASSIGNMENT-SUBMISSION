@@ -48,12 +48,6 @@ export const StudentCourses: React.FC<StudentCoursesProps> = ({
   const [isDeletingCourse, setIsDeletingCourse] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Live real-time sync with Cloudflare D1
-  React.useEffect(() => {
-    storage.syncWithD1().then(() => {
-      setRefreshTrigger((prev) => prev + 1);
-    }).catch(() => {});
-  }, []);
 
   if (!user) return null;
 
@@ -464,10 +458,10 @@ export const StudentCourses: React.FC<StudentCoursesProps> = ({
                           </div>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
-                          {((doc as any).r2Url || (doc as any).fileKey || (doc as any).dataUrl) && (
+                          {((doc as any).fileKey || (doc as any).dataUrl) && (
                             <button
                               onClick={() => {
-                                const previewUrl = (doc as any).r2Url || ((doc as any).fileKey ? `/api/files/preview/${(doc as any).fileKey}` : (doc as any).dataUrl);
+                                const previewUrl = (doc as any).fileKey ? `/api/files/preview/${(doc as any).fileKey}` : (doc as any).dataUrl;
                                 if (previewUrl) window.open(previewUrl, '_blank');
                               }}
                               className="p-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 transition-colors cursor-pointer"

@@ -98,18 +98,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({
         currentUser
       );
 
-      // Immediately sync with Cloudflare D1
-      try {
-        await fetch('/api/courses', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newCourse),
-        });
-      } catch (d1Err) {
-        console.warn('D1 course sync notice:', d1Err);
-      }
-
-      setSuccess(`Course ${newCourse.code} created and synced to Cloudflare D1 successfully!`);
+      setSuccess(`Course ${newCourse.code} created successfully!`);
       if (onCourseCreated) {
         onCourseCreated(newCourse);
       }
